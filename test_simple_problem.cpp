@@ -98,6 +98,11 @@ class stopwatch {
 };
 
 
+void print(__m256d v) {
+  double x[4];
+  _mm256_store_pd(x, v);
+  cout << x[0] << "," << x[1] << "," << x[2] << "," << x[3] << endl;
+}
 
 
 inline void checkoverflow(double &prod, long int &exponent) {
@@ -128,17 +133,18 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   
   __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
   __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);
+  int high_mask_bits = _mm256_movemask_pd(high_mask);
+  int low_mask_bits  = _mm256_movemask_pd(low_mask);
+  
+  if ((high_mask_bits | low_mask_bits) == 0) {
+    return;
+  }
+  
+  exponent += _mm_popcnt_u32(high_mask_bits);
+  exponent -= _mm_popcnt_u32(low_mask_bits);
   
   prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);
   prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
-  
-/*  if (prod>toohigh) {
-    prod*=toolow;
-    exponent++;
-  } else if (prod<toolow)  {
-    prod*=toohigh;
-    exponent--;
-  }*/
 }
 
 
@@ -147,7 +153,7 @@ double horizontal_product(__m256d v) {
   __m128d vhigh = _mm256_extractf128_pd(v, 1); // high 128
   __m128d prod1  = _mm_mul_pd(vlow, vhigh);     // reduce down to 128
   __m128d high64 = _mm_unpackhi_pd(prod1, prod1);
-  return  _mm_cvtsd_f64(_mm_mul_sd(vlow, high64));  // reduce to scalar
+  return _mm_cvtsd_f64(_mm_mul_sd(vlow, high64));  // reduce to scalar
 }
 
 
@@ -196,7 +202,7 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
     prod4 = mul_if_not_zero(prod4, u_vec, _mm256_load_pd(&x[j + 12]));
      */
     
-   //cout << j << " before: " << horizontal_product(prod1) << endl;
+ //  cout << j << " before: " << horizontal_product(prod1) << endl;
    
    if ((j / 16) % 8 == 0) { 
       checkoverflow(prod1, exponent);
@@ -205,7 +211,8 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
       checkoverflow(prod4, exponent);
    }
     
-  //cout << j << " after:  " << horizontal_product(prod1) << endl;
+ // cout << j << " after:  " << horizontal_product(prod1) << endl;
+    
     
 
     
@@ -213,6 +220,12 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
 //    prod *= abs(u-x[j]);
     //checkoverflow(prod,exponent); 
   }
+
+  checkoverflow(prod1, exponent);
+  checkoverflow(prod2, exponent);
+  checkoverflow(prod3, exponent);
+  checkoverflow(prod4, exponent);
+
   /*
   for (int j=k+1; j<N; j++) {
 //    prod*=u-x[j];
@@ -223,13 +236,23 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   __m256d prod = _mm256_mul_pd(_mm256_mul_pd(prod1, prod2), _mm256_mul_pd(prod3, prod4));
   //__m256d prod = _mm256_mul_pd(prod1, prod2);// , _mm256_mul_pd(prod3, prod4));
   
-  //qcout << " -> before: " << horizontal_product(prod) << endl;
+  //cout << " -> before: " << horizontal_product(prod) << endl;
+  
   checkoverflow(prod, exponent);
+  checkoverflow(prod, exponent);
+  checkoverflow(prod, exponent);
+  
+  //cout << " -> after: " << horizontal_product(prod) << endl;
+ 
   
   prod_ref = horizontal_product(prod);
   exponent_ref = exponent;
   
   checkoverflow(prod_ref, exponent_ref);
+  checkoverflow(prod_ref, exponent_ref);
+  checkoverflow(prod_ref, exponent_ref);
+  
+  //cout << "prod=" << prod_ref << ", exponent=" << exponent_ref << endl;  
 } 
 
 void prod_realcomplex(const long int N, const double u, const double * x, const double * y, double &prod, long int &exponent) {
