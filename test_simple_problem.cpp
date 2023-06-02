@@ -113,23 +113,33 @@ inline void checkoverflow(double &prod, long int &exponent) {
   }
 }
 
-/*
-inline void checkoverflow(double &prod, long int &exponent) {
-  const long int exponent_low_high=511;
-  const double toohigh=pow(2,exponent_low_high);
-  const double toolow=pow(2,-exponent_low_high);
+__m256d abs(__m256d a) {
+  __m256d mask = _mm256_set1_pd(-0.);
+  return _mm256_andnot_pd(mask, a); 
+}
+
+inline void checkoverflow(__m256d &prod, int64_t &exponent) {
+  const long int exponent_low_high=255;
+  const __m256d toohigh = _mm256_set1_pd(pow(2,exponent_low_high));
+  double p = pow(2,-exponent_low_high);
+  const __m256d toolow  = _mm256_set1_pd(p);
   
+  __m256d abs_prod = abs(prod);
   
+  __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
+  __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);
   
+  prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);
+  prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
   
-  if (prod>toohigh) {
+/*  if (prod>toohigh) {
     prod*=toolow;
     exponent++;
   } else if (prod<toolow)  {
     prod*=toohigh;
     exponent--;
-  }
-}*/
+  }*/
+}
 
 
 double horizontal_product(__m256d v) {
@@ -139,6 +149,7 @@ double horizontal_product(__m256d v) {
   __m128d high64 = _mm_unpackhi_pd(prod1, prod1);
   return  _mm_cvtsd_f64(_mm_mul_sd(vlow, high64));  // reduce to scalar
 }
+
 
 __m256d mul_if_index_not_k(__m256d prod, __m256d u, __m256d x, int64_t index_base, int64_t k) {
   __m256i index = _mm256_add_epi64(_mm256_set1_epi64x(index_base), _mm256_set_epi64x(3,2,1,0));
@@ -166,23 +177,37 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   __m256d prod2 = _mm256_set_pd(1, 1, 1, 1);
   __m256d prod3 = _mm256_set_pd(1, 1, 1, 1);
   __m256d prod4 = _mm256_set_pd(1, 1, 1, 1);
-  __m256d u_vec = _mm256_set1_pd(u);
+  __m256d u_vec = _mm256_set1_pd(0);
   
   int64_t exponent = exponent_ref;
   
 // prod of u-x[j] for all j!=k
   for (int64_t j=0; j<N; j += 16) { 
-  
-    prod1 = mul_if_index_not_k(prod1, u_vec, _mm256_load_pd(&x[j]),     j,   k);
-    prod2 = mul_if_index_not_k(prod2, u_vec, _mm256_load_pd(&x[j + 4]), j+4, k);
-    prod3 = mul_if_index_not_k(prod3, u_vec, _mm256_load_pd(&x[j + 8]), j+8, k);
-    prod4 = mul_if_index_not_k(prod4, u_vec, _mm256_load_pd(&x[j + 12]),j+12,k);
-  /*  
+    
+    prod1 = mul_if_index_not_k(prod1, u_vec, _mm256_load_pd(&x[j]),      j,   k);
+    prod2 = mul_if_index_not_k(prod2, u_vec, _mm256_load_pd(&x[j + 4]),  j+4, k);
+    prod3 = mul_if_index_not_k(prod3, u_vec, _mm256_load_pd(&x[j + 8]),  j+8, k);
+    prod4 = mul_if_index_not_k(prod4, u_vec, _mm256_load_pd(&x[j + 12]), j+12,k);
+   
+   /*
     prod1 = mul_if_not_zero(prod1, u_vec, _mm256_load_pd(&x[j]));
     prod2 = mul_if_not_zero(prod2, u_vec, _mm256_load_pd(&x[j + 4]));
     prod3 = mul_if_not_zero(prod3, u_vec, _mm256_load_pd(&x[j + 8]));
     prod4 = mul_if_not_zero(prod4, u_vec, _mm256_load_pd(&x[j + 12]));
- */  
+     */
+    
+   //cout << j << " before: " << horizontal_product(prod1) << endl;
+   
+   if ((j / 16) % 8 == 0) { 
+      checkoverflow(prod1, exponent);
+      checkoverflow(prod2, exponent);
+      checkoverflow(prod3, exponent);
+      checkoverflow(prod4, exponent);
+   }
+    
+  //cout << j << " after:  " << horizontal_product(prod1) << endl;
+    
+
     
 //      prod*=u-x[j];
 //    prod *= abs(u-x[j]);
@@ -195,8 +220,16 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
     //checkoverflow(prod,exponent);
   }*/
   
-  prod_ref = horizontal_product(prod1) * horizontal_product(prod2) * horizontal_product(prod3) * horizontal_product(prod4);
+  __m256d prod = _mm256_mul_pd(_mm256_mul_pd(prod1, prod2), _mm256_mul_pd(prod3, prod4));
+  //__m256d prod = _mm256_mul_pd(prod1, prod2);// , _mm256_mul_pd(prod3, prod4));
+  
+  //qcout << " -> before: " << horizontal_product(prod) << endl;
+  checkoverflow(prod, exponent);
+  
+  prod_ref = horizontal_product(prod);
   exponent_ref = exponent;
+  
+  checkoverflow(prod_ref, exponent_ref);
 } 
 
 void prod_realcomplex(const long int N, const double u, const double * x, const double * y, double &prod, long int &exponent) {
@@ -252,6 +285,9 @@ int main(int argc, char *argv[]) {
     cout << "example: " << argv[0] << " 10 10000\n";
     return 1;
   }
+
+  __m256d xx = _mm256_set_pd(1,2,3,4);
+  cout << " product: " << horizontal_product(xx) << endl;
 
   long int M = atoi(argv[1]);
   long int N = atoi(argv[2]);
