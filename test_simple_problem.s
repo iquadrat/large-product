@@ -230,7 +230,6 @@ _Z13prod_realreallldPKdRdRl:
 	pushq	%rbp
 	.cfi_def_cfa_offset 16
 	.cfi_offset 6, -16
-	movq	%rdi, %r9
 	movq	%rsp, %rbp
 	.cfi_def_cfa_register 6
 	pushq	%r15
@@ -245,211 +244,254 @@ _Z13prod_realreallldPKdRdRl:
 	.cfi_offset 13, -40
 	.cfi_offset 12, -48
 	.cfi_offset 3, -56
+	movq	%rsi, 16(%rsp)
 	movq	%r8, 24(%rsp)
 	testb	$15, %dil
-	jne	.L46
-	vmovapd	.LC7(%rip), %ymm2
-	movq	(%r8), %rax
-	vmovlpd	(%rcx), %xmm2, %xmm1
-	movq	%rcx, %r14
-	vinsertf128	$0x0, %xmm1, %ymm2, %ymm2
-	vbroadcastsd	%xmm0, %ymm7
-	andq	$-16, %rsi
-	testq	%rdi, %rdi
-	jle	.L33
+	jne	.L60
+	vmovapd	.LC7(%rip), %ymm1
 	vmovapd	.LC3(%rip), %ymm3
+	movq	%rdx, %rsi
+	movq	(%r8), %rdx
+	movq	16(%rsp), %r8
+	vmovsd	%xmm0, %xmm0, %xmm2
+	vmovlpd	(%rcx), %xmm1, %xmm0
+	vinsertf128	$0x0, %xmm0, %ymm1, %ymm1
+	movq	%rdi, %r10
+	movq	%rcx, %r9
+	vbroadcastsd	%xmm2, %ymm8
+	andq	$-16, %r8
+	vmovapd	%ymm3, %ymm0
+	vmovapd	%ymm3, %ymm7
+	testq	%rdi, %rdi
+	jle	.L42
 	vmovapd	.LC1(%rip), %ymm6
 	vmovapd	.LC8(%rip), %ymm4
 	vmovapd	.LC9(%rip), %ymm5
-	movq	%rdx, %rdi
-	vmovapd	%ymm3, %ymm1
-	vmovapd	%ymm3, %ymm0
-	xorl	%ecx, %ecx
+	xorl	%eax, %eax
 	.p2align 4,,10
 	.p2align 3
 .L20:
-	cmpq	%rcx, %rsi
+	cmpq	%rax, %r8
 	je	.L19
-	vsubpd	(%rdi,%rcx,8), %ymm7, %ymm8
-	vmulpd	%ymm8, %ymm2, %ymm2
-	vsubpd	32(%rdi,%rcx,8), %ymm7, %ymm8
-	vmulpd	%ymm8, %ymm0, %ymm0
-	vsubpd	64(%rdi,%rcx,8), %ymm7, %ymm8
-	vmulpd	%ymm8, %ymm1, %ymm1
-	vsubpd	96(%rdi,%rcx,8), %ymm7, %ymm8
-	vmulpd	%ymm8, %ymm3, %ymm3
-	testb	$112, %cl
+	vsubpd	(%rsi,%rax,8), %ymm8, %ymm9
+	vmulpd	%ymm9, %ymm1, %ymm1
+	vsubpd	32(%rsi,%rax,8), %ymm8, %ymm9
+	vmulpd	%ymm9, %ymm7, %ymm7
+	vsubpd	64(%rsi,%rax,8), %ymm8, %ymm9
+	vmulpd	%ymm9, %ymm0, %ymm0
+	vsubpd	96(%rsi,%rax,8), %ymm8, %ymm9
+	vmulpd	%ymm9, %ymm3, %ymm3
+	testb	$112, %al
 	jne	.L19
-	vandnpd	%ymm2, %ymm6, %ymm2
-	vcmppd	$13, %ymm4, %ymm2, %ymm9
-	vcmppd	$2, %ymm5, %ymm2, %ymm8
-	vandnpd	%ymm0, %ymm6, %ymm0
-	vmovmskpd	%ymm9, %edx
-	vmulpd	%ymm4, %ymm2, %ymm9
-	vmovmskpd	%ymm8, %r15d
 	vandnpd	%ymm1, %ymm6, %ymm1
-	vandnpd	%ymm3, %ymm6, %ymm3
-	popcntl	%edx, %edx
-	vblendvpd	%ymm8, %ymm9, %ymm2, %ymm2
-	vcmppd	$13, %ymm4, %ymm0, %ymm9
-	vcmppd	$2, %ymm5, %ymm0, %ymm8
-	addq	%rdx, %rax
-	vmovmskpd	%ymm9, %r13d
-	vmulpd	%ymm4, %ymm0, %ymm9
-	vmovmskpd	%ymm8, %r12d
-	popcntl	%r15d, %r15d
-	subq	%r15, %rax
-	popcntl	%r13d, %r13d
-	vblendvpd	%ymm8, %ymm9, %ymm0, %ymm0
-	vcmppd	$13, %ymm4, %ymm1, %ymm9
-	vcmppd	$2, %ymm5, %ymm1, %ymm8
-	addq	%r13, %rax
-	vmovmskpd	%ymm9, %ebx
-	vmulpd	%ymm4, %ymm1, %ymm9
-	vmovmskpd	%ymm8, %r11d
-	popcntl	%r12d, %r12d
-	subq	%r12, %rax
-	popcntl	%ebx, %ebx
-	vblendvpd	%ymm8, %ymm9, %ymm1, %ymm1
-	vcmppd	$13, %ymm4, %ymm3, %ymm9
-	vcmppd	$2, %ymm5, %ymm3, %ymm8
-	addq	%rbx, %rax
-	vmovmskpd	%ymm9, %r10d
-	vmulpd	%ymm4, %ymm3, %ymm9
-	popcntl	%r11d, %r11d
-	subq	%r11, %rax
-	vmovmskpd	%ymm8, %r8d
-	popcntl	%r10d, %r10d
-	addq	%r10, %rax
-	popcntl	%r8d, %r8d
-	vblendvpd	%ymm8, %ymm9, %ymm3, %ymm3
-	subq	%r8, %rax
-.L19:
-	addq	$16, %rcx
-	cmpq	%rcx, %r9
-	jg	.L20
-.L18:
-	vandnpd	%ymm2, %ymm6, %ymm2
-	vcmppd	$13, %ymm4, %ymm2, %ymm8
-	vcmppd	$2, %ymm5, %ymm2, %ymm7
+	vcmppd	$13, %ymm4, %ymm1, %ymm10
+	vcmppd	$2, %ymm5, %ymm1, %ymm9
+	vandnpd	%ymm7, %ymm6, %ymm7
+	vmovmskpd	%ymm10, %ecx
+	vmulpd	%ymm4, %ymm1, %ymm10
+	vmovmskpd	%ymm9, %r15d
 	vandnpd	%ymm0, %ymm6, %ymm0
-	vmovmskpd	%ymm8, %ecx
-	vmulpd	%ymm4, %ymm2, %ymm8
-	vmovmskpd	%ymm7, %r13d
-	vandnpd	%ymm1, %ymm6, %ymm1
 	vandnpd	%ymm3, %ymm6, %ymm3
 	popcntl	%ecx, %ecx
-	vblendvpd	%ymm7, %ymm8, %ymm2, %ymm2
-	vcmppd	$13, %ymm4, %ymm0, %ymm8
-	vcmppd	$2, %ymm5, %ymm0, %ymm7
-	addq	%rax, %rcx
-	vmovmskpd	%ymm8, %edx
-	vmulpd	%ymm4, %ymm0, %ymm8
-	vmovmskpd	%ymm7, %r12d
+	vblendvpd	%ymm9, %ymm10, %ymm1, %ymm1
+	vcmppd	$13, %ymm4, %ymm7, %ymm10
+	vcmppd	$2, %ymm5, %ymm7, %ymm9
+	addq	%rcx, %rdx
+	vmovmskpd	%ymm10, %r14d
+	vmulpd	%ymm4, %ymm7, %ymm10
+	vmovmskpd	%ymm9, %r13d
+	popcntl	%r15d, %r15d
+	subq	%r15, %rdx
+	popcntl	%r14d, %r14d
+	vblendvpd	%ymm9, %ymm10, %ymm7, %ymm7
+	vcmppd	$13, %ymm4, %ymm0, %ymm10
+	vcmppd	$2, %ymm5, %ymm0, %ymm9
+	addq	%r14, %rdx
+	vmovmskpd	%ymm10, %r12d
+	vmulpd	%ymm4, %ymm0, %ymm10
+	vmovmskpd	%ymm9, %ebx
+	popcntl	%r13d, %r13d
+	subq	%r13, %rdx
+	popcntl	%r12d, %r12d
+	vblendvpd	%ymm9, %ymm10, %ymm0, %ymm0
+	vcmppd	$13, %ymm4, %ymm3, %ymm10
+	vcmppd	$2, %ymm5, %ymm3, %ymm9
+	addq	%r12, %rdx
+	vmovmskpd	%ymm10, %r11d
+	vmulpd	%ymm4, %ymm3, %ymm10
+	popcntl	%ebx, %ebx
+	subq	%rbx, %rdx
+	vmovmskpd	%ymm9, %edi
+	popcntl	%r11d, %r11d
+	addq	%r11, %rdx
+	popcntl	%edi, %edi
+	vblendvpd	%ymm9, %ymm10, %ymm3, %ymm3
+	subq	%rdi, %rdx
+.L19:
+	addq	$16, %rax
+	cmpq	%rax, %r10
+	jg	.L20
+.L18:
+	vandnpd	%ymm1, %ymm6, %ymm1
+	vcmppd	$13, %ymm4, %ymm1, %ymm9
+	vcmppd	$2, %ymm5, %ymm1, %ymm8
+	vandnpd	%ymm7, %ymm6, %ymm7
+	vmovmskpd	%ymm9, %ecx
+	vmulpd	%ymm4, %ymm1, %ymm9
+	vmovmskpd	%ymm8, %r13d
+	vandnpd	%ymm0, %ymm6, %ymm0
+	vandnpd	%ymm3, %ymm6, %ymm3
+	popcntl	%ecx, %ecx
+	vblendvpd	%ymm8, %ymm9, %ymm1, %ymm1
+	vcmppd	$13, %ymm4, %ymm7, %ymm9
+	vcmppd	$2, %ymm5, %ymm7, %ymm8
+	addq	%rdx, %rcx
+	vmovmskpd	%ymm9, %eax
+	vmulpd	%ymm4, %ymm7, %ymm9
+	vmovmskpd	%ymm8, %r12d
 	popcntl	%r13d, %r13d
 	subq	%r13, %rcx
-	popcntl	%edx, %edx
-	vblendvpd	%ymm7, %ymm8, %ymm0, %ymm7
-	vcmppd	$13, %ymm4, %ymm1, %ymm8
-	vcmppd	$2, %ymm5, %ymm1, %ymm0
-	vmulpd	%ymm7, %ymm2, %ymm2
-	vmovmskpd	%ymm8, %ebx
-	vmulpd	%ymm4, %ymm1, %ymm8
-	vmovmskpd	%ymm0, %r11d
-	leaq	(%rcx,%rdx), %rax
+	popcntl	%eax, %eax
+	vblendvpd	%ymm8, %ymm9, %ymm7, %ymm7
+	vcmppd	$13, %ymm4, %ymm0, %ymm9
+	vcmppd	$2, %ymm5, %ymm0, %ymm8
+	vmulpd	%ymm7, %ymm1, %ymm1
+	vmovmskpd	%ymm9, %r14d
+	vmulpd	%ymm4, %ymm0, %ymm9
+	vmovmskpd	%ymm8, %r15d
+	addq	%rcx, %rax
 	popcntl	%r12d, %r12d
 	subq	%r12, %rax
-	vblendvpd	%ymm0, %ymm8, %ymm1, %ymm0
-	vcmppd	$13, %ymm4, %ymm3, %ymm8
-	vcmppd	$2, %ymm5, %ymm3, %ymm1
-	popcntl	%ebx, %ebx
-	vmovmskpd	%ymm8, %r10d
-	vmulpd	%ymm4, %ymm3, %ymm8
-	vmovmskpd	%ymm1, %r9d
-	leaq	(%rax,%rbx), %rax
-	popcntl	%r11d, %r11d
-	subq	%r11, %rax
-	vblendvpd	%ymm1, %ymm8, %ymm3, %ymm3
+	vblendvpd	%ymm8, %ymm9, %ymm0, %ymm0
+	vcmppd	$13, %ymm4, %ymm3, %ymm9
+	vcmppd	$2, %ymm5, %ymm3, %ymm8
+	popcntl	%r14d, %r14d
+	vmovmskpd	%ymm9, %edi
+	vmulpd	%ymm4, %ymm3, %ymm9
+	vmovmskpd	%ymm8, %ebx
+	movl	%ebx, 8(%rsp)
+	movl	%edi, 12(%rsp)
+	addq	%rax, %r14
+	vblendvpd	%ymm8, %ymm9, %ymm3, %ymm3
 	vmulpd	%ymm3, %ymm0, %ymm0
-	popcntl	%r10d, %r10d
-	addq	%r10, %rax
-	popcntl	%r9d, %r9d
-	subq	%r9, %rax
-	vmulpd	%ymm2, %ymm0, %ymm0
+	xorl	%eax, %eax
+	popcntl	%r15d, %eax
+	subq	%rax, %r14
+	xorl	%eax, %eax
+	vmulpd	%ymm1, %ymm0, %ymm0
 	xorl	%edx, %edx
-	movq	24(%rsp), %rbx
+	popcntl	12(%rsp), %eax
+	addq	%r14, %rax
+	popcntl	8(%rsp), %edx
 	vandnpd	%ymm0, %ymm6, %ymm0
-	vcmppd	$13, %ymm4, %ymm0, %ymm2
+	vcmppd	$13, %ymm4, %ymm0, %ymm3
 	vcmppd	$2, %ymm5, %ymm0, %ymm1
-	vmovmskpd	%ymm2, %r8d
-	vmulpd	%ymm4, %ymm0, %ymm2
-	vmovmskpd	%ymm1, %edi
-	popcntl	%r8d, %r8d
-	addq	%r8, %rax
-	popcntl	%edi, %edi
-	vblendvpd	%ymm1, %ymm2, %ymm0, %ymm0
+	subq	%rdx, %rax
+	vmovmskpd	%ymm3, %r10d
+	vmulpd	%ymm4, %ymm0, %ymm3
+	vmovmskpd	%ymm1, %r11d
+	movl	%r11d, (%rsp)
+	movl	%r10d, 4(%rsp)
+	xorl	%edx, %edx
+	vblendvpd	%ymm1, %ymm3, %ymm0, %ymm0
 	vandnpd	%ymm0, %ymm6, %ymm0
-	vcmppd	$13, %ymm4, %ymm0, %ymm2
+	vcmppd	$13, %ymm4, %ymm0, %ymm3
 	vcmppd	$2, %ymm5, %ymm0, %ymm1
-	subq	%rdi, %rax
-	vmovmskpd	%ymm2, %r15d
-	vmulpd	%ymm4, %ymm0, %ymm2
-	vmovmskpd	%ymm1, %esi
-	movl	%esi, 20(%rsp)
-	popcntl	%r15d, %r15d
-	addq	%r15, %rax
-	vblendvpd	%ymm1, %ymm2, %ymm0, %ymm0
+	popcntl	4(%rsp), %edx
+	vmovmskpd	%ymm3, %ebx
+	vmulpd	%ymm4, %ymm0, %ymm3
+	vmovmskpd	%ymm1, %r11d
+	addq	%rdx, %rax
+	xorl	%edx, %edx
+	popcntl	(%rsp), %edx
+	vblendvpd	%ymm1, %ymm3, %ymm0, %ymm0
 	vandnpd	%ymm0, %ymm6, %ymm1
 	vcmppd	$13, %ymm4, %ymm1, %ymm0
 	vcmppd	$2, %ymm5, %ymm1, %ymm5
-	popcntl	20(%rsp), %edx
-	vmovmskpd	%ymm0, %esi
-	vmulpd	%ymm4, %ymm1, %ymm0
-	movl	%esi, 16(%rsp)
 	subq	%rdx, %rax
-	xorl	%edx, %edx
-	popcntl	16(%rsp), %edx
+	vmovmskpd	%ymm0, %r10d
+	vmulpd	%ymm4, %ymm1, %ymm0
+	popcntl	%ebx, %ebx
+	addq	%rbx, %rax
+	popcntl	%r11d, %r11d
+	subq	%r11, %rax
 	vblendvpd	%ymm5, %ymm0, %ymm1, %ymm1
 	vmovapd	%xmm1, %xmm0
 	vextractf128	$0x1, %ymm1, %xmm1
 	vmulpd	%xmm1, %xmm0, %xmm1
-	addq	%rdx, %rax
-	vmovmskpd	%ymm5, %esi
-	popcntl	%esi, %esi
-	subq	%rsi, %rax
+	popcntl	%r10d, %r10d
+	vmovmskpd	%ymm5, %edi
+	addq	%r10, %rax
+	popcntl	%edi, %edi
 	vunpckhpd	%xmm1, %xmm1, %xmm1
 	vmulsd	%xmm1, %xmm0, %xmm0
 	vmovsd	.LC10(%rip), %xmm1
-	vmovsd	.LC11(%rip), %xmm2
+	subq	%rdi, %rax
+	movq	24(%rsp), %rbx
+	vmovsd	.LC11(%rip), %xmm3
 	vcomisd	%xmm1, %xmm0
-	vmovsd	%xmm0, (%r14)
+	vmovsd	%xmm0, (%r9)
 	movq	%rax, (%rbx)
-	ja	.L47
-	vcomisd	%xmm0, %xmm2
+	ja	.L61
+	vcomisd	%xmm0, %xmm3
 	jbe	.L23
 	vmulsd	%xmm1, %xmm0, %xmm0
 	decq	%rax
-	vmovsd	%xmm0, (%r14)
+	vmovsd	%xmm0, (%r9)
 	movq	%rax, (%rbx)
 .L23:
 	vcomisd	%xmm1, %xmm0
-	jbe	.L42
-.L48:
-	vmulsd	%xmm2, %xmm0, %xmm0
-	movq	24(%rsp), %rsi
+	jbe	.L54
+.L63:
+	vmulsd	%xmm3, %xmm0, %xmm0
+	movq	24(%rsp), %rdi
 	incq	%rax
-	vmovsd	%xmm0, (%r14)
-	movq	%rax, (%rsi)
+	vmovsd	%xmm0, (%r9)
+	movq	%rax, (%rdi)
 .L27:
 	vcomisd	%xmm1, %xmm0
-	jbe	.L43
-.L49:
-	vmulsd	%xmm2, %xmm0, %xmm0
-	movq	24(%rsp), %rsi
+	jbe	.L55
+.L64:
+	vmulsd	%xmm3, %xmm0, %xmm0
+	movq	24(%rsp), %rdi
 	incq	%rax
-	vmovsd	%xmm0, (%r14)
-	movq	%rax, (%rsi)
-.L44:
+	vmovsd	%xmm0, (%r9)
+	movq	%rax, (%rdi)
+.L31:
+	leaq	15(%r8), %rdx
+	movslq	%r8d, %rax
+	vmovq	.LC12(%rip), %xmm4
+	addq	$16, %r8
+	cmpq	%rdx, %rax
+	jg	.L57
+	movq	16(%rsp), %rdx
+	jmp	.L40
+	.p2align 4,,10
+	.p2align 3
+.L62:
+	vmulsd	%xmm3, %xmm0, %xmm0
+	vmovsd	%xmm0, (%r9)
+.L35:
+	incq	%rax
+	cmpq	%r8, %rax
+	je	.L57
+.L40:
+	cmpq	%rax, %rdx
+	je	.L35
+	vsubsd	(%rsi,%rax,8), %xmm2, %xmm0
+	vandpd	%xmm4, %xmm0, %xmm0
+	vmulsd	(%r9), %xmm0, %xmm0
+	vcomisd	%xmm1, %xmm0
+	ja	.L62
+	vcomisd	%xmm0, %xmm3
+	jbe	.L59
+	vmulsd	%xmm1, %xmm0, %xmm0
+.L59:
+	incq	%rax
+	vmovsd	%xmm0, (%r9)
+	cmpq	%r8, %rax
+	jne	.L40
+.L57:
 	vzeroupper
 	leaq	-40(%rbp), %rsp
 	popq	%rbx
@@ -463,44 +505,41 @@ _Z13prod_realreallldPKdRdRl:
 	ret
 	.p2align 4,,10
 	.p2align 3
-.L47:
+.L61:
 	.cfi_restore_state
-	vmulsd	%xmm2, %xmm0, %xmm0
+	vmulsd	%xmm3, %xmm0, %xmm0
 	incq	%rax
 	vcomisd	%xmm1, %xmm0
-	vmovsd	%xmm0, (%r14)
+	vmovsd	%xmm0, (%r9)
 	movq	%rax, (%rbx)
-	ja	.L48
-.L42:
-	vcomisd	%xmm0, %xmm2
+	ja	.L63
+.L54:
+	vcomisd	%xmm0, %xmm3
 	jbe	.L27
 	vmulsd	%xmm1, %xmm0, %xmm0
 	decq	%rax
-	movq	24(%rsp), %rsi
+	movq	24(%rsp), %rbx
 	vcomisd	%xmm1, %xmm0
-	vmovsd	%xmm0, (%r14)
-	movq	%rax, (%rsi)
-	ja	.L49
-.L43:
-	vcomisd	%xmm0, %xmm2
-	jbe	.L44
+	vmovsd	%xmm0, (%r9)
+	movq	%rax, (%rbx)
+	ja	.L64
+.L55:
+	vcomisd	%xmm0, %xmm3
+	jbe	.L31
 	vmulsd	%xmm1, %xmm0, %xmm0
-	movq	24(%rsp), %rdx
+	movq	24(%rsp), %rdi
 	decq	%rax
-	vmovsd	%xmm0, (%r14)
-	movq	%rax, (%rdx)
-	jmp	.L44
+	vmovsd	%xmm0, (%r9)
+	movq	%rax, (%rdi)
+	jmp	.L31
 	.p2align 4,,10
 	.p2align 3
-.L33:
-	vmovapd	.LC3(%rip), %ymm3
+.L42:
 	vmovapd	.LC1(%rip), %ymm6
 	vmovapd	.LC8(%rip), %ymm4
 	vmovapd	.LC9(%rip), %ymm5
-	vmovapd	%ymm3, %ymm1
-	vmovapd	%ymm3, %ymm0
 	jmp	.L18
-.L46:
+.L60:
 	leaq	.LC4(%rip), %rcx
 	movl	$185, %edx
 	leaq	.LC5(%rip), %rsi
@@ -519,46 +558,46 @@ _Z16prod_realcomplexldPKdS0_RdRl:
 	movq	%rdi, %rax
 	movq	%rdx, %rdi
 	testq	%rax, %rax
-	jle	.L61
+	jle	.L76
 	leaq	0(,%rax,8), %rdx
 	vmovsd	(%rcx), %xmm1
 	vmovsd	.LC10(%rip), %xmm4
 	vmovsd	.LC11(%rip), %xmm5
 	xorl	%eax, %eax
-	jmp	.L56
+	jmp	.L71
 	.p2align 4,,10
 	.p2align 3
-.L62:
+.L77:
 	vmulsd	%xmm5, %xmm1, %xmm1
 	vmovsd	%xmm1, (%rcx)
 	incq	(%r8)
-.L54:
+.L69:
 	addq	$8, %rax
 	cmpq	%rdx, %rax
-	je	.L61
-.L56:
+	je	.L76
+.L71:
 	vmovsd	(%rdi,%rax), %xmm3
 	vsubsd	(%rsi,%rax), %xmm0, %xmm2
 	vmulsd	%xmm3, %xmm3, %xmm3
 	vfmadd132sd	%xmm2, %xmm3, %xmm2
 	vmulsd	%xmm2, %xmm1, %xmm1
 	vcomisd	%xmm4, %xmm1
-	ja	.L62
+	ja	.L77
 	vcomisd	%xmm1, %xmm5
-	ja	.L55
+	ja	.L70
 	addq	$8, %rax
 	vmovsd	%xmm1, (%rcx)
 	cmpq	%rdx, %rax
-	jne	.L56
-.L61:
+	jne	.L71
+.L76:
 	ret
 	.p2align 4,,10
 	.p2align 3
-.L55:
+.L70:
 	vmulsd	%xmm4, %xmm1, %xmm1
 	vmovsd	%xmm1, (%rcx)
 	decq	(%r8)
-	jmp	.L54
+	jmp	.L69
 	.cfi_endproc
 .LFE8814:
 	.size	_Z16prod_realcomplexldPKdS0_RdRl, .-_Z16prod_realcomplexldPKdS0_RdRl
@@ -571,43 +610,43 @@ _Z16prod_complexreallddPKdRdRl:
 	endbr64
 	vmulsd	%xmm1, %xmm1, %xmm1
 	testq	%rdi, %rdi
-	jle	.L74
+	jle	.L89
 	vmovsd	(%rdx), %xmm2
 	vmovsd	.LC10(%rip), %xmm4
 	vmovsd	.LC11(%rip), %xmm5
 	leaq	(%rsi,%rdi,8), %rax
-	jmp	.L69
+	jmp	.L84
 	.p2align 4,,10
 	.p2align 3
-.L75:
+.L90:
 	vmulsd	%xmm5, %xmm2, %xmm2
 	vmovsd	%xmm2, (%rdx)
 	incq	(%rcx)
-.L67:
+.L82:
 	addq	$8, %rsi
 	cmpq	%rax, %rsi
-	je	.L74
-.L69:
+	je	.L89
+.L84:
 	vsubsd	(%rsi), %xmm0, %xmm3
 	vfmadd132sd	%xmm3, %xmm1, %xmm3
 	vmulsd	%xmm3, %xmm2, %xmm2
 	vcomisd	%xmm4, %xmm2
-	ja	.L75
+	ja	.L90
 	vcomisd	%xmm2, %xmm5
-	ja	.L68
+	ja	.L83
 	addq	$8, %rsi
 	vmovsd	%xmm2, (%rdx)
 	cmpq	%rax, %rsi
-	jne	.L69
-.L74:
+	jne	.L84
+.L89:
 	ret
 	.p2align 4,,10
 	.p2align 3
-.L68:
+.L83:
 	vmulsd	%xmm4, %xmm2, %xmm2
 	vmovsd	%xmm2, (%rdx)
 	decq	(%rcx)
-	jmp	.L67
+	jmp	.L82
 	.cfi_endproc
 .LFE8815:
 	.size	_Z16prod_complexreallddPKdRdRl, .-_Z16prod_complexreallddPKdRdRl
@@ -621,91 +660,91 @@ _Z19prod_complexcomplexllddPKdS0_RdRl:
 	movq	%rsi, %rax
 	movq	%rdx, %rsi
 	testq	%rax, %rax
-	jle	.L85
+	jle	.L100
 	vmovsd	(%r8), %xmm2
 	vmovsd	.LC10(%rip), %xmm5
 	vmovsd	.LC11(%rip), %xmm6
 	leaq	0(,%rax,8), %r10
 	xorl	%edx, %edx
-	jmp	.L84
+	jmp	.L99
 	.p2align 4,,10
 	.p2align 3
-.L98:
+.L113:
 	vmulsd	%xmm6, %xmm2, %xmm2
 	vmovsd	%xmm2, (%r8)
 	incq	(%r9)
-.L82:
+.L97:
 	addq	$8, %rdx
 	cmpq	%r10, %rdx
-	je	.L85
-.L84:
+	je	.L100
+.L99:
 	vsubsd	(%rcx,%rdx), %xmm1, %xmm4
 	vsubsd	(%rsi,%rdx), %xmm0, %xmm3
 	vmulsd	%xmm4, %xmm4, %xmm4
 	vfmadd132sd	%xmm3, %xmm4, %xmm3
 	vmulsd	%xmm3, %xmm2, %xmm2
 	vcomisd	%xmm5, %xmm2
-	ja	.L98
+	ja	.L113
 	vcomisd	%xmm2, %xmm6
-	ja	.L83
+	ja	.L98
 	addq	$8, %rdx
 	vmovsd	%xmm2, (%r8)
 	cmpq	%r10, %rdx
-	jne	.L84
-.L85:
+	jne	.L99
+.L100:
 	incl	%eax
 	cltq
 	cmpq	%rax, %rdi
-	jle	.L99
+	jle	.L114
 	vmovsd	(%r8), %xmm2
 	vmovsd	.LC10(%rip), %xmm5
 	vmovsd	.LC11(%rip), %xmm6
 	salq	$3, %rax
 	salq	$3, %rdi
-	jmp	.L90
+	jmp	.L105
 	.p2align 4,,10
 	.p2align 3
-.L101:
+.L116:
 	vmulsd	%xmm6, %xmm2, %xmm2
 	vmovsd	%xmm2, (%r8)
 	incq	(%r9)
-.L88:
+.L103:
 	addq	$8, %rax
 	cmpq	%rdi, %rax
-	je	.L100
-.L90:
+	je	.L115
+.L105:
 	vsubsd	(%rcx,%rax), %xmm1, %xmm4
 	vsubsd	(%rsi,%rax), %xmm0, %xmm3
 	vmulsd	%xmm4, %xmm4, %xmm4
 	vfmadd132sd	%xmm3, %xmm4, %xmm3
 	vmulsd	%xmm3, %xmm2, %xmm2
 	vcomisd	%xmm5, %xmm2
-	ja	.L101
+	ja	.L116
 	vcomisd	%xmm2, %xmm6
-	ja	.L89
+	ja	.L104
 	addq	$8, %rax
 	vmovsd	%xmm2, (%r8)
 	cmpq	%rdi, %rax
-	jne	.L90
-.L100:
+	jne	.L105
+.L115:
 	ret
 	.p2align 4,,10
 	.p2align 3
-.L83:
+.L98:
 	vmulsd	%xmm5, %xmm2, %xmm2
 	vmovsd	%xmm2, (%r8)
 	decq	(%r9)
-	jmp	.L82
+	jmp	.L97
 	.p2align 4,,10
 	.p2align 3
-.L89:
+.L104:
 	vmulsd	%xmm5, %xmm2, %xmm2
 	vmovsd	%xmm2, (%r8)
 	decq	(%r9)
-	jmp	.L88
+	jmp	.L103
 	.p2align 4,,10
 	.p2align 3
-.L99:
+.L114:
 	ret
 	.cfi_endproc
 .LFE8816:
@@ -719,50 +758,50 @@ _ZNSt23mersenne_twister_engineImLm64ELm312ELm156ELm31ELm13043109905998158313ELm2
 .LFB9226:
 	.cfi_startproc
 	endbr64
-	vmovdqa	.LC12(%rip), %ymm2
 	vmovdqa	.LC13(%rip), %ymm3
 	vmovdqa	.LC14(%rip), %ymm4
 	vmovdqa	.LC15(%rip), %ymm5
+	vmovdqa	.LC16(%rip), %ymm2
 	movq	%rdi, %rax
 	leaq	1248(%rdi), %rcx
 	movq	%rdi, %rdx
 	vpxor	%xmm7, %xmm7, %xmm7
 	.p2align 4,,10
 	.p2align 3
-.L103:
-	vpand	8(%rdx), %ymm3, %ymm1
-	vpand	(%rdx), %ymm2, %ymm0
+.L118:
+	vpand	8(%rdx), %ymm4, %ymm1
+	vpand	(%rdx), %ymm3, %ymm0
 	addq	$32, %rdx
 	vpor	%ymm1, %ymm0, %ymm0
 	vpsrlq	$1, %ymm0, %ymm1
-	vpand	%ymm4, %ymm0, %ymm0
+	vpand	%ymm5, %ymm0, %ymm0
 	vpxor	1216(%rdx), %ymm1, %ymm1
 	vpcmpeqq	%ymm7, %ymm0, %ymm0
-	vpxor	%ymm5, %ymm1, %ymm6
+	vpxor	%ymm2, %ymm1, %ymm6
 	vpblendvb	%ymm0, %ymm1, %ymm6, %ymm0
 	vmovdqu	%ymm0, -32(%rdx)
 	cmpq	%rcx, %rdx
-	jne	.L103
+	jne	.L118
 	leaq	2464(%rax), %rcx
 	vpxor	%xmm7, %xmm7, %xmm7
 	.p2align 4,,10
 	.p2align 3
-.L104:
-	vpand	8(%rdx), %ymm3, %ymm1
-	vpand	(%rdx), %ymm2, %ymm0
+.L119:
+	vpand	8(%rdx), %ymm4, %ymm1
+	vpand	(%rdx), %ymm3, %ymm0
 	addq	$32, %rdx
 	vpor	%ymm1, %ymm0, %ymm0
 	vpsrlq	$1, %ymm0, %ymm1
-	vpand	%ymm4, %ymm0, %ymm0
+	vpand	%ymm5, %ymm0, %ymm0
 	vpxor	-1280(%rdx), %ymm1, %ymm1
 	vpcmpeqq	%ymm7, %ymm0, %ymm0
-	vpxor	%ymm5, %ymm1, %ymm6
+	vpxor	%ymm2, %ymm1, %ymm6
 	vpblendvb	%ymm0, %ymm1, %ymm6, %ymm0
 	vmovdqu	%ymm0, -32(%rdx)
 	cmpq	%rdx, %rcx
-	jne	.L104
-	vmovdqa	.LC16(%rip), %xmm0
-	vmovdqa	.LC17(%rip), %xmm1
+	jne	.L119
+	vmovdqa	.LC17(%rip), %xmm0
+	vmovdqa	.LC18(%rip), %xmm1
 	vpand	2464(%rax), %xmm0, %xmm0
 	vpand	2472(%rax), %xmm1, %xmm1
 	movq	2488(%rax), %rsi
@@ -770,7 +809,7 @@ _ZNSt23mersenne_twister_engineImLm64ELm312ELm156ELm31ELm13043109905998158313ELm2
 	movq	2480(%rax), %rdx
 	vpsrlq	$1, %xmm0, %xmm1
 	movq	%rsi, %rcx
-	vpand	.LC18(%rip), %xmm0, %xmm0
+	vpand	.LC19(%rip), %xmm0, %xmm0
 	andl	$2147483647, %ecx
 	vpxor	1216(%rax), %xmm1, %xmm1
 	andq	$-2147483648, %rdx
@@ -778,16 +817,16 @@ _ZNSt23mersenne_twister_engineImLm64ELm312ELm156ELm31ELm13043109905998158313ELm2
 	orq	%rcx, %rdx
 	vpcmpeqq	%xmm3, %xmm0, %xmm0
 	movq	%rdx, %rcx
-	vpxor	.LC19(%rip), %xmm1, %xmm2
+	vpxor	.LC20(%rip), %xmm1, %xmm2
 	shrq	%rcx
 	vpblendvb	%xmm0, %xmm1, %xmm2, %xmm0
 	xorq	1232(%rax), %rcx
 	andl	$1, %edx
 	vmovdqu	%xmm0, 2464(%rax)
-	je	.L108
+	je	.L123
 	movabsq	$-5403634167711393303, %rdx
 	xorq	%rdx, %rcx
-.L108:
+.L123:
 	movq	(%rax), %rdx
 	andq	$-2147483648, %rsi
 	andl	$2147483647, %edx
@@ -797,10 +836,10 @@ _ZNSt23mersenne_twister_engineImLm64ELm312ELm156ELm31ELm13043109905998158313ELm2
 	shrq	%rcx
 	xorq	1240(%rax), %rcx
 	andl	$1, %edx
-	je	.L107
+	je	.L122
 	movabsq	$-5403634167711393303, %rdx
 	xorq	%rdx, %rcx
-.L107:
+.L122:
 	movq	%rcx, 2488(%rax)
 	movq	$0, 2496(%rax)
 	vzeroupper
@@ -817,7 +856,7 @@ _Z21init_random_positionslddPd:
 	.cfi_startproc
 	endbr64
 	testq	%rdi, %rdi
-	jle	.L125
+	jle	.L140
 	pushq	%r15
 	.cfi_def_cfa_offset 16
 	.cfi_offset 15, -16
@@ -852,29 +891,29 @@ _Z21init_random_positionslddPd:
 	vmovsd	8+_ZL5distu(%rip), %xmm3
 	movq	2496+_ZL3gen(%rip), %rax
 	vsubsd	%xmm4, %xmm3, %xmm3
-	jmp	.L120
+	jmp	.L135
 	.p2align 4,,10
 	.p2align 3
-.L127:
+.L142:
 	vcvtsi2sdq	%rax, %xmm5, %xmm0
-.L114:
+.L129:
 	vxorpd	%xmm6, %xmm6, %xmm6
 	vaddsd	%xmm6, %xmm0, %xmm0
-	vmulsd	.LC21(%rip), %xmm0, %xmm0
-	vcomisd	.LC22(%rip), %xmm0
-	jnb	.L115
+	vmulsd	.LC22(%rip), %xmm0, %xmm0
+	vcomisd	.LC23(%rip), %xmm0
+	jnb	.L130
 	vfmadd132sd	%xmm3, %xmm4, %xmm0
 	vfmadd132sd	%xmm1, %xmm2, %xmm0
 	vmovsd	%xmm0, (%r12,%rbx,8)
 	incq	%rbx
 	cmpq	%rbp, %rbx
-	je	.L121
-.L116:
+	je	.L136
+.L131:
 	movq	%rdx, %rax
-.L120:
+.L135:
 	cmpq	$311, %rax
-	ja	.L126
-.L119:
+	ja	.L141
+.L134:
 	leaq	1(%rax), %rdx
 	movq	(%rcx,%rax,8), %rax
 	movq	%rdx, 2496+_ZL3gen(%rip)
@@ -893,17 +932,17 @@ _Z21init_random_positionslddPd:
 	movq	%rax, %rsi
 	shrq	$43, %rsi
 	xorq	%rsi, %rax
-	jns	.L127
+	jns	.L142
 	movq	%rax, %rsi
 	shrq	%rsi
 	andl	$1, %eax
 	orq	%rax, %rsi
 	vcvtsi2sdq	%rsi, %xmm5, %xmm0
 	vaddsd	%xmm0, %xmm0, %xmm0
-	jmp	.L114
+	jmp	.L129
 	.p2align 4,,10
 	.p2align 3
-.L126:
+.L141:
 	movq	%rcx, %rdi
 	vmovsd	%xmm3, 24(%rsp)
 	vmovsd	%xmm1, 16(%rsp)
@@ -917,18 +956,18 @@ _Z21init_random_positionslddPd:
 	vmovsd	(%rsp), %xmm4
 	vxorps	%xmm5, %xmm5, %xmm5
 	leaq	_ZL3gen(%rip), %rcx
-	jmp	.L119
+	jmp	.L134
 	.p2align 4,,10
 	.p2align 3
-.L115:
-	vmovsd	.LC23(%rip), %xmm0
+.L130:
+	vmovsd	.LC24(%rip), %xmm0
 	vfmadd132sd	%xmm3, %xmm4, %xmm0
 	vfmadd132sd	%xmm1, %xmm2, %xmm0
 	vmovsd	%xmm0, (%r12,%rbx,8)
 	incq	%rbx
 	cmpq	%rbx, %rbp
-	jne	.L116
-.L121:
+	jne	.L131
+.L136:
 	addq	$40, %rsp
 	.cfi_def_cfa_offset 56
 	popq	%rbx
@@ -944,7 +983,7 @@ _Z21init_random_positionslddPd:
 	popq	%r15
 	.cfi_def_cfa_offset 8
 	ret
-.L125:
+.L140:
 	.cfi_restore 3
 	.cfi_restore 6
 	.cfi_restore 12
@@ -956,37 +995,37 @@ _Z21init_random_positionslddPd:
 .LFE8795:
 	.size	_Z21init_random_positionslddPd, .-_Z21init_random_positionslddPd
 	.section	.rodata.str1.1
-.LC24:
+.LC25:
 	.string	"M N\n"
 	.section	.rodata.str1.8
 	.align 8
-.LC25:
+.LC26:
 	.string	"M number of runs, N number of particles\n"
 	.section	.rodata.str1.1
-.LC26:
-	.string	"example: "
 .LC27:
-	.string	" 10 10000\n"
+	.string	"example: "
 .LC28:
+	.string	" 10 10000\n"
+.LC29:
 	.string	" product: "
-.LC33:
-	.string	"prod_realreal: orod="
 .LC34:
-	.string	" exponent="
+	.string	"prod_realreal: orod="
 .LC35:
-	.string	" timing="
+	.string	" exponent="
 .LC36:
-	.string	" seconds\n"
+	.string	" timing="
 .LC37:
-	.string	"prod_complexcomplex: orod="
+	.string	" seconds\n"
 .LC38:
-	.string	"prod_realcomplex: orod="
+	.string	"prod_complexcomplex: orod="
 .LC39:
+	.string	"prod_realcomplex: orod="
+.LC40:
 	.string	"prod_complexreal: orod="
 	.section	.text.unlikely,"ax",@progbits
-.LCOLDB45:
+.LCOLDB46:
 	.section	.text.startup,"ax",@progbits
-.LHOTB45:
+.LHOTB46:
 	.p2align 4
 	.globl	main
 	.type	main, @function
@@ -1017,32 +1056,32 @@ main:
 	movq	%rax, -56(%rbp)
 	xorl	%eax, %eax
 	cmpl	$3, %edi
-	je	.L129
+	je	.L144
 	leaq	_ZSt4cout(%rip), %r12
 	movq	(%rsi), %rsi
 	movq	%r12, %rdi
 	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
 	movq	%rax, %rdi
-	leaq	.LC24(%rip), %rsi
-	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
 	leaq	.LC25(%rip), %rsi
+	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
+	leaq	.LC26(%rip), %rsi
 	movq	%r12, %rdi
 	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
 	movl	$9, %edx
-	leaq	.LC26(%rip), %rsi
+	leaq	.LC27(%rip), %rsi
 	movq	%r12, %rdi
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	movq	(%rbx), %rsi
 	movq	%r12, %rdi
 	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
 	movq	%rax, %rdi
-	leaq	.LC27(%rip), %rsi
+	leaq	.LC28(%rip), %rsi
 	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
 	movl	$1, %eax
-.L128:
+.L143:
 	movq	-56(%rbp), %rdx
 	subq	%fs:40, %rdx
-	jne	.L227
+	jne	.L242
 	addq	$208, %rsp
 	popq	%rbx
 	popq	%r10
@@ -1054,13 +1093,13 @@ main:
 	.cfi_remember_state
 	.cfi_def_cfa 7, 8
 	ret
-.L129:
+.L144:
 	.cfi_restore_state
 	movl	$10, %edx
-	leaq	.LC28(%rip), %rsi
+	leaq	.LC29(%rip), %rsi
 	leaq	_ZSt4cout(%rip), %rdi
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
-	vmovapd	.LC29(%rip), %ymm0
+	vmovapd	.LC30(%rip), %ymm0
 	leaq	_ZSt4cout(%rip), %rdi
 	vmovapd	%xmm0, %xmm1
 	vextractf128	$0x1, %ymm0, %xmm0
@@ -1075,11 +1114,11 @@ main:
 	movq	-24(%rax), %rax
 	movq	240(%r13,%rax), %r12
 	testq	%r12, %r12
-	je	.L228
+	je	.L243
 	cmpb	$0, 56(%r12)
-	je	.L132
+	je	.L147
 	movzbl	67(%r12), %eax
-.L133:
+.L148:
 	movsbl	%al, %esi
 	movq	%r13, %rdi
 	call	_ZNSo3putEc@PLT
@@ -1099,7 +1138,7 @@ main:
 	movabsq	$1152921504606846975, %rax
 	movq	%r14, -176(%rbp)
 	cmpq	%rax, %r14
-	ja	.L134
+	ja	.L149
 	leaq	0(,%r14,8), %rbx
 	movq	%rbx, %rdi
 	call	_Znam@PLT
@@ -1107,26 +1146,26 @@ main:
 	movq	%rax, %r15
 	call	_Znam@PLT
 	movq	%rax, %r13
-	movq	.LC22(%rip), %rax
+	movq	.LC23(%rip), %rax
 	movq	%r15, %rsi
 	vmovq	%rax, %xmm1
-	movq	.LC30(%rip), %rax
+	movq	.LC31(%rip), %rax
 	movq	%r14, %rdi
 	vmovq	%rax, %xmm0
 	call	_Z21init_random_positionslddPd
-	movq	.LC22(%rip), %rax
+	movq	.LC23(%rip), %rax
 	movq	%r13, %rsi
 	vmovq	%rax, %xmm1
-	movq	.LC30(%rip), %rax
+	movq	.LC31(%rip), %rax
 	movq	%r14, %rdi
 	vmovq	%rax, %xmm0
 	call	_Z21init_random_positionslddPd
-	movq	.LC22(%rip), %rax
+	movq	.LC23(%rip), %rax
 	movq	$0, -120(%rbp)
 	movq	%rax, -128(%rbp)
 	call	clock@PLT
 	movq	%rax, -112(%rbp)
-	movq	.LC31(%rip), %rax
+	movq	.LC32(%rip), %rax
 	vxorpd	%xmm0, %xmm0, %xmm0
 	vmovapd	%xmm0, -96(%rbp)
 	movq	%rax, -72(%rbp)
@@ -1136,20 +1175,20 @@ main:
 	vcvtsi2sdq	%rax, %xmm4, %xmm0
 	vmovsd	%xmm0, -104(%rbp)
 	testq	%r12, %r12
-	jle	.L135
+	jle	.L150
 	testq	%r14, %r14
-	jle	.L135
+	jle	.L150
 	vxorpd	%xmm4, %xmm4, %xmm4
 	leaq	-120(%rbp), %rax
 	movq	%rax, -192(%rbp)
 	vmovsd	%xmm4, -144(%rbp)
 	leaq	-128(%rbp), %rax
-	vmovsd	.LC21(%rip), %xmm4
+	vmovsd	.LC22(%rip), %xmm4
 	movq	%rax, -184(%rbp)
 	leaq	_ZL5distu(%rip), %rax
 	vmovsd	%xmm4, -152(%rbp)
 	movq	$0, -200(%rbp)
-	vmovsd	.LC32(%rip), %xmm4
+	vmovsd	.LC33(%rip), %xmm4
 	movq	%rax, -232(%rbp)
 	movq	%r13, -216(%rbp)
 	movq	%rbx, -208(%rbp)
@@ -1158,7 +1197,7 @@ main:
 	vmovsd	%xmm4, -136(%rbp)
 	.p2align 4,,10
 	.p2align 3
-.L136:
+.L151:
 	movq	-232(%rbp), %rax
 	vmovsd	8+_ZL5distu(%rip), %xmm0
 	vmovsd	(%rax), %xmm4
@@ -1167,22 +1206,22 @@ main:
 	movq	2496+_ZL3gen(%rip), %rax
 	vmovsd	%xmm4, -160(%rbp)
 	vmovsd	%xmm7, -168(%rbp)
-	jmp	.L144
+	jmp	.L159
 	.p2align 4,,10
 	.p2align 3
-.L230:
+.L245:
 	vxorpd	%xmm4, %xmm4, %xmm4
 	vcvtsi2sdq	%rax, %xmm4, %xmm0
-.L138:
+.L153:
 	vaddsd	-144(%rbp), %xmm0, %xmm0
 	vmulsd	-152(%rbp), %xmm0, %xmm0
-	vcomisd	.LC22(%rip), %xmm0
-	jnb	.L139
+	vcomisd	.LC23(%rip), %xmm0
+	jnb	.L154
 	vmovsd	-160(%rbp), %xmm6
-	vmovsd	.LC30(%rip), %xmm7
+	vmovsd	.LC31(%rip), %xmm7
 	vfmadd132sd	-168(%rbp), %xmm6, %xmm0
 	vfmadd132sd	-136(%rbp), %xmm7, %xmm0
-.L225:
+.L240:
 	movq	-192(%rbp), %r8
 	movq	-184(%rbp), %rcx
 	movq	%r13, %rsi
@@ -1191,12 +1230,12 @@ main:
 	incq	%r13
 	call	_Z13prod_realreallldPKdRdRl
 	cmpq	%r13, %rbx
-	je	.L140
+	je	.L155
 	movq	%r14, %rax
-.L144:
+.L159:
 	cmpq	$311, %rax
-	ja	.L229
-.L142:
+	ja	.L244
+.L157:
 	leaq	1(%rax), %r14
 	movq	(%r12,%rax,8), %rax
 	movabsq	$6148914691236517205, %rsi
@@ -1218,7 +1257,7 @@ main:
 	shrq	$43, %rdx
 	movq	%r14, 2496+_ZL3gen(%rip)
 	xorq	%rdx, %rax
-	jns	.L230
+	jns	.L245
 	movq	%rax, %rdx
 	shrq	%rdx
 	andl	$1, %eax
@@ -1226,30 +1265,30 @@ main:
 	vxorpd	%xmm4, %xmm4, %xmm4
 	vcvtsi2sdq	%rdx, %xmm4, %xmm0
 	vaddsd	%xmm0, %xmm0, %xmm0
-	jmp	.L138
+	jmp	.L153
 	.p2align 4,,10
 	.p2align 3
-.L229:
+.L244:
 	movq	%r12, %rdi
 	call	_ZNSt23mersenne_twister_engineImLm64ELm312ELm156ELm31ELm13043109905998158313ELm29ELm6148914691236517205ELm17ELm8202884508482404352ELm37ELm18444473444759240704ELm43ELm6364136223846793005EE11_M_gen_randEv
 	movq	2496+_ZL3gen(%rip), %rax
-	jmp	.L142
+	jmp	.L157
 	.p2align 4,,10
 	.p2align 3
-.L140:
+.L155:
 	incq	-200(%rbp)
 	movq	-200(%rbp), %rax
 	cmpq	%rax, -224(%rbp)
-	jne	.L136
+	jne	.L151
 	movq	-208(%rbp), %rbx
 	movq	-216(%rbp), %r13
-.L135:
+.L150:
 	leaq	-112(%rbp), %rax
 	movq	%rax, %rdi
 	movq	%rax, -248(%rbp)
 	call	_ZN9stopwatch4stopEv.part.0
 	movl	$20, %edx
-	leaq	.LC33(%rip), %rsi
+	leaq	.LC34(%rip), %rsi
 	leaq	_ZSt4cout(%rip), %rdi
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	vmovsd	-128(%rbp), %xmm0
@@ -1257,7 +1296,7 @@ main:
 	call	_ZNSo9_M_insertIdEERSoT_@PLT
 	movq	%rax, %rdi
 	movl	$10, %edx
-	leaq	.LC34(%rip), %rsi
+	leaq	.LC35(%rip), %rsi
 	movq	%rax, %r12
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	movq	-120(%rbp), %rsi
@@ -1265,20 +1304,20 @@ main:
 	call	_ZNSo9_M_insertIlEERSoT_@PLT
 	movq	%rax, %rdi
 	movl	$8, %edx
-	leaq	.LC35(%rip), %rsi
+	leaq	.LC36(%rip), %rsi
 	movq	%rax, %r12
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	cmpb	$0, -80(%rbp)
 	vmovsd	-88(%rbp), %xmm1
-	jne	.L231
-.L145:
+	jne	.L246
+.L160:
 	vmovsd	%xmm1, %xmm1, %xmm0
 	movq	%r12, %rdi
 	call	_ZNSo9_M_insertIdEERSoT_@PLT
 	movq	%rax, %rdi
-	leaq	.LC36(%rip), %rsi
+	leaq	.LC37(%rip), %rsi
 	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
-	movq	.LC22(%rip), %rax
+	movq	.LC23(%rip), %rax
 	vxorpd	%xmm0, %xmm0, %xmm0
 	vmovapd	%xmm0, -96(%rbp)
 	movq	%rax, -128(%rbp)
@@ -1289,16 +1328,16 @@ main:
 	vcvtsi2sdq	%rax, %xmm7, %xmm0
 	cmpq	$0, -224(%rbp)
 	vmovsd	%xmm0, -104(%rbp)
-	jle	.L146
+	jle	.L161
 	cmpq	$0, -176(%rbp)
-	jle	.L146
+	jle	.L161
 	leaq	-120(%rbp), %rax
 	movq	%rax, -192(%rbp)
 	leaq	-128(%rbp), %rax
 	movq	%rax, -184(%rbp)
 	leaq	_ZL5distu(%rip), %rax
-	vmovsd	.LC21(%rip), %xmm4
-	vmovsd	.LC32(%rip), %xmm6
+	vmovsd	.LC22(%rip), %xmm4
+	vmovsd	.LC33(%rip), %xmm6
 	movq	$0, -208(%rbp)
 	movq	%rax, -232(%rbp)
 	movq	%rbx, -216(%rbp)
@@ -1310,7 +1349,7 @@ main:
 	vmovsd	%xmm6, -136(%rbp)
 	.p2align 4,,10
 	.p2align 3
-.L147:
+.L162:
 	movq	-232(%rbp), %rax
 	vmovsd	8+_ZL5distu(%rip), %xmm0
 	vmovsd	(%rax), %xmm6
@@ -1319,26 +1358,26 @@ main:
 	vmovsd	%xmm6, -160(%rbp)
 	xorl	%r14d, %r14d
 	vmovsd	%xmm3, -168(%rbp)
-	jmp	.L160
+	jmp	.L175
 	.p2align 4,,10
 	.p2align 3
-.L235:
+.L250:
 	vxorpd	%xmm3, %xmm3, %xmm3
 	vcvtsi2sdq	%rax, %xmm3, %xmm0
-.L149:
+.L164:
 	vaddsd	-144(%rbp), %xmm0, %xmm0
-	vmovsd	.LC22(%rip), %xmm7
-	vmovsd	.LC23(%rip), %xmm6
+	vmovsd	.LC23(%rip), %xmm7
+	vmovsd	.LC24(%rip), %xmm6
 	vmulsd	-152(%rbp), %xmm0, %xmm0
 	vcmplesd	%xmm0, %xmm7, %xmm1
 	vblendvpd	%xmm1, %xmm6, %xmm0, %xmm0
 	vmovsd	-160(%rbp), %xmm6
 	vfmadd132sd	-168(%rbp), %xmm6, %xmm0
-	vmovsd	.LC30(%rip), %xmm6
+	vmovsd	.LC31(%rip), %xmm6
 	vfmadd132sd	-136(%rbp), %xmm6, %xmm0
 	cmpq	$311, %rdx
-	ja	.L232
-.L154:
+	ja	.L247
+.L169:
 	movq	(%r12,%rdx,8), %rax
 	leaq	1(%rdx), %r11
 	movq	%rax, %rdx
@@ -1360,33 +1399,33 @@ main:
 	shrq	$43, %rdx
 	movq	%r11, 2496+_ZL3gen(%rip)
 	xorq	%rdx, %rax
-	js	.L155
+	js	.L170
 	vxorpd	%xmm7, %xmm7, %xmm7
 	vcvtsi2sdq	%rax, %xmm7, %xmm1
-.L156:
+.L171:
 	vaddsd	-144(%rbp), %xmm1, %xmm1
 	vmulsd	-152(%rbp), %xmm1, %xmm1
-	vcomisd	.LC22(%rip), %xmm1
-	jnb	.L157
+	vcomisd	.LC23(%rip), %xmm1
+	jnb	.L172
 	vmovsd	-160(%rbp), %xmm4
 	movq	-192(%rbp), %r9
 	vfmadd132sd	-168(%rbp), %xmm4, %xmm1
 	movq	-184(%rbp), %r8
 	movq	%r13, %rcx
 	movq	%r15, %rdx
-.L226:
-	vmovsd	.LC30(%rip), %xmm6
+.L241:
+	vmovsd	.LC31(%rip), %xmm6
 	movq	%r14, %rsi
 	vfmadd132sd	-136(%rbp), %xmm6, %xmm1
 	movq	%rbx, %rdi
 	incq	%r14
 	call	_Z19prod_complexcomplexllddPKdS0_RdRl
 	cmpq	%r14, %rbx
-	je	.L233
-.L160:
+	je	.L248
+.L175:
 	cmpq	$311, %r11
-	ja	.L234
-.L153:
+	ja	.L249
+.L168:
 	movq	(%r12,%r11,8), %rax
 	movabsq	$6148914691236517205, %rsi
 	movq	%rax, %rcx
@@ -1408,7 +1447,7 @@ main:
 	shrq	$43, %rcx
 	movq	%rdx, 2496+_ZL3gen(%rip)
 	xorq	%rcx, %rax
-	jns	.L235
+	jns	.L250
 	movq	%rax, %rcx
 	shrq	%rcx
 	andl	$1, %eax
@@ -1416,10 +1455,10 @@ main:
 	vxorpd	%xmm6, %xmm6, %xmm6
 	vcvtsi2sdq	%rcx, %xmm6, %xmm0
 	vaddsd	%xmm0, %xmm0, %xmm0
-	jmp	.L149
+	jmp	.L164
 	.p2align 4,,10
 	.p2align 3
-.L155:
+.L170:
 	movq	%rax, %rdx
 	shrq	%rdx
 	andl	$1, %eax
@@ -1427,36 +1466,36 @@ main:
 	vxorpd	%xmm3, %xmm3, %xmm3
 	vcvtsi2sdq	%rdx, %xmm3, %xmm1
 	vaddsd	%xmm1, %xmm1, %xmm1
-	jmp	.L156
+	jmp	.L171
 	.p2align 4,,10
 	.p2align 3
-.L232:
+.L247:
 	movq	%r12, %rdi
 	vmovsd	%xmm0, -200(%rbp)
 	call	_ZNSt23mersenne_twister_engineImLm64ELm312ELm156ELm31ELm13043109905998158313ELm29ELm6148914691236517205ELm17ELm8202884508482404352ELm37ELm18444473444759240704ELm43ELm6364136223846793005EE11_M_gen_randEv
 	movq	2496+_ZL3gen(%rip), %rdx
 	vmovsd	-200(%rbp), %xmm0
-	jmp	.L154
+	jmp	.L169
 	.p2align 4,,10
 	.p2align 3
-.L234:
+.L249:
 	movq	%r12, %rdi
 	call	_ZNSt23mersenne_twister_engineImLm64ELm312ELm156ELm31ELm13043109905998158313ELm29ELm6148914691236517205ELm17ELm8202884508482404352ELm37ELm18444473444759240704ELm43ELm6364136223846793005EE11_M_gen_randEv
 	movq	2496+_ZL3gen(%rip), %r11
-	jmp	.L153
+	jmp	.L168
 	.p2align 4,,10
 	.p2align 3
-.L233:
+.L248:
 	incq	-208(%rbp)
 	movq	-208(%rbp), %rax
 	cmpq	%rax, -224(%rbp)
-	jne	.L147
+	jne	.L162
 	movq	-216(%rbp), %rbx
-.L146:
+.L161:
 	movq	-248(%rbp), %rdi
 	call	_ZN9stopwatch4stopEv.part.0
 	movl	$26, %edx
-	leaq	.LC37(%rip), %rsi
+	leaq	.LC38(%rip), %rsi
 	leaq	_ZSt4cout(%rip), %rdi
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	vmovsd	-128(%rbp), %xmm0
@@ -1464,7 +1503,7 @@ main:
 	call	_ZNSo9_M_insertIdEERSoT_@PLT
 	movq	%rax, %rdi
 	movl	$10, %edx
-	leaq	.LC34(%rip), %rsi
+	leaq	.LC35(%rip), %rsi
 	movq	%rax, %r12
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	movq	-120(%rbp), %rsi
@@ -1472,20 +1511,20 @@ main:
 	call	_ZNSo9_M_insertIlEERSoT_@PLT
 	movq	%rax, %rdi
 	movl	$8, %edx
-	leaq	.LC35(%rip), %rsi
+	leaq	.LC36(%rip), %rsi
 	movq	%rax, %r12
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	cmpb	$0, -80(%rbp)
 	vmovsd	-88(%rbp), %xmm1
-	jne	.L236
-.L161:
+	jne	.L251
+.L176:
 	vmovsd	%xmm1, %xmm1, %xmm0
 	movq	%r12, %rdi
 	call	_ZNSo9_M_insertIdEERSoT_@PLT
 	movq	%rax, %rdi
-	leaq	.LC36(%rip), %rsi
+	leaq	.LC37(%rip), %rsi
 	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
-	movq	.LC22(%rip), %rax
+	movq	.LC23(%rip), %rax
 	vxorpd	%xmm0, %xmm0, %xmm0
 	vmovapd	%xmm0, -96(%rbp)
 	movq	%rax, -128(%rbp)
@@ -1496,15 +1535,15 @@ main:
 	vcvtsi2sdq	%rax, %xmm3, %xmm0
 	cmpq	$0, -224(%rbp)
 	vmovsd	%xmm0, -104(%rbp)
-	jle	.L162
+	jle	.L177
 	cmpq	$0, -176(%rbp)
-	jle	.L162
-	movq	.LC22(%rip), %rax
+	jle	.L177
+	movq	.LC23(%rip), %rax
 	vxorpd	%xmm4, %xmm4, %xmm4
 	vmovq	%rax, %xmm0
 	leaq	_ZL5distu(%rip), %rax
-	vmovsd	.LC21(%rip), %xmm6
-	vmovsd	.LC32(%rip), %xmm7
+	vmovsd	.LC22(%rip), %xmm6
+	vmovsd	.LC33(%rip), %xmm7
 	movq	$0, -216(%rbp)
 	movq	%rax, -232(%rbp)
 	xorl	%r10d, %r10d
@@ -1522,7 +1561,7 @@ main:
 	movq	%r12, %r11
 	.p2align 4,,10
 	.p2align 3
-.L163:
+.L178:
 	movq	-232(%rbp), %rax
 	vmovsd	8+_ZL5distu(%rip), %xmm6
 	vmovsd	(%rax), %xmm7
@@ -1534,11 +1573,11 @@ main:
 	movq	%rax, %r12
 	.p2align 4,,10
 	.p2align 3
-.L176:
+.L191:
 	movq	%rdi, %rax
 	cmpq	$311, %rdi
-	ja	.L237
-.L169:
+	ja	.L252
+.L184:
 	leaq	1(%rax), %rdi
 	movq	(%r11,%rax,8), %rax
 	movq	%rdi, 2496+_ZL3gen(%rip)
@@ -1557,13 +1596,13 @@ main:
 	movq	%rax, %rdx
 	shrq	$43, %rdx
 	xorq	%rdx, %rax
-	js	.L164
+	js	.L179
 	vxorpd	%xmm5, %xmm5, %xmm5
 	vcvtsi2sdq	%rax, %xmm5, %xmm5
-.L165:
+.L180:
 	vaddsd	-144(%rbp), %xmm5, %xmm5
-	vmovsd	.LC22(%rip), %xmm2
-	vmovsd	.LC23(%rip), %xmm1
+	vmovsd	.LC23(%rip), %xmm2
+	vmovsd	.LC24(%rip), %xmm1
 	vmulsd	-152(%rbp), %xmm5, %xmm5
 	movq	%r12, %rdx
 	xorl	%eax, %eax
@@ -1571,55 +1610,55 @@ main:
 	vcmplesd	%xmm5, %xmm2, %xmm2
 	vblendvpd	%xmm2, %xmm1, %xmm5, %xmm5
 	vfmadd132sd	%xmm6, %xmm7, %xmm5
-	vmovsd	.LC30(%rip), %xmm1
+	vmovsd	.LC31(%rip), %xmm1
 	vfmadd132sd	-136(%rbp), %xmm1, %xmm5
-	jmp	.L174
+	jmp	.L189
 	.p2align 4,,10
 	.p2align 3
-.L239:
+.L254:
 	vmulsd	%xmm4, %xmm0, %xmm0
 	incq	%rdx
 	movl	$1, %ecx
-.L172:
+.L187:
 	addq	$8, %rax
 	cmpq	%rax, %rbx
-	je	.L238
-.L174:
+	je	.L253
+.L189:
 	vmovsd	0(%r13,%rax), %xmm2
 	vsubsd	(%r15,%rax), %xmm5, %xmm1
 	vmulsd	%xmm2, %xmm2, %xmm2
 	vfmadd132sd	%xmm1, %xmm2, %xmm1
 	vmulsd	%xmm1, %xmm0, %xmm0
 	vcomisd	%xmm3, %xmm0
-	ja	.L239
+	ja	.L254
 	vcomisd	%xmm0, %xmm4
-	jbe	.L172
+	jbe	.L187
 	addq	$8, %rax
 	vmulsd	%xmm3, %xmm0, %xmm0
 	decq	%rdx
 	movl	$1, %ecx
 	cmpq	%rax, %rbx
-	jne	.L174
-.L238:
+	jne	.L189
+.L253:
 	vmovsd	%xmm0, -128(%rbp)
 	testb	%cl, %cl
-	je	.L175
+	je	.L190
 	movq	%rdx, -120(%rbp)
 	movq	%rdx, %r12
-.L175:
+.L190:
 	incq	%r14
 	cmpq	%r14, -176(%rbp)
-	jne	.L176
+	jne	.L191
 	incq	-216(%rbp)
 	movq	%r12, %r14
 	movq	-216(%rbp), %rax
 	cmpq	%rax, -224(%rbp)
-	jne	.L163
-.L162:
+	jne	.L178
+.L177:
 	movq	-248(%rbp), %rdi
 	call	_ZN9stopwatch4stopEv.part.0
 	movl	$23, %edx
-	leaq	.LC38(%rip), %rsi
+	leaq	.LC39(%rip), %rsi
 	leaq	_ZSt4cout(%rip), %rdi
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	vmovsd	-128(%rbp), %xmm0
@@ -1627,7 +1666,7 @@ main:
 	call	_ZNSo9_M_insertIdEERSoT_@PLT
 	movq	%rax, %rdi
 	movl	$10, %edx
-	leaq	.LC34(%rip), %rsi
+	leaq	.LC35(%rip), %rsi
 	movq	%rax, %r12
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	movq	-120(%rbp), %rsi
@@ -1635,20 +1674,20 @@ main:
 	call	_ZNSo9_M_insertIlEERSoT_@PLT
 	movq	%rax, %rdi
 	movl	$8, %edx
-	leaq	.LC35(%rip), %rsi
+	leaq	.LC36(%rip), %rsi
 	movq	%rax, %r12
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	cmpb	$0, -80(%rbp)
 	vmovsd	-88(%rbp), %xmm1
-	jne	.L240
-.L177:
+	jne	.L255
+.L192:
 	vmovsd	%xmm1, %xmm1, %xmm0
 	movq	%r12, %rdi
 	call	_ZNSo9_M_insertIdEERSoT_@PLT
 	movq	%rax, %rdi
-	leaq	.LC36(%rip), %rsi
+	leaq	.LC37(%rip), %rsi
 	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
-	movq	.LC22(%rip), %rax
+	movq	.LC23(%rip), %rax
 	vxorpd	%xmm0, %xmm0, %xmm0
 	vmovapd	%xmm0, -96(%rbp)
 	movq	%rax, -128(%rbp)
@@ -1659,14 +1698,14 @@ main:
 	vcvtsi2sdq	%rax, %xmm4, %xmm0
 	cmpq	$0, -224(%rbp)
 	vmovsd	%xmm0, -104(%rbp)
-	jle	.L178
+	jle	.L193
 	cmpq	$0, -176(%rbp)
-	jle	.L178
-	movq	.LC22(%rip), %rax
-	vmovsd	.LC32(%rip), %xmm3
+	jle	.L193
+	movq	.LC23(%rip), %rax
+	vmovsd	.LC33(%rip), %xmm3
 	vmovq	%rax, %xmm0
 	leaq	_ZL5distu(%rip), %rax
-	vmovsd	.LC21(%rip), %xmm7
+	vmovsd	.LC22(%rip), %xmm7
 	movq	$0, -240(%rbp)
 	movq	%rax, -232(%rbp)
 	movq	%r15, -160(%rbp)
@@ -1687,7 +1726,7 @@ main:
 	xchgq	%rbx, %r12
 	.p2align 4,,10
 	.p2align 3
-.L179:
+.L194:
 	movq	-232(%rbp), %rax
 	vmovsd	8+_ZL5distu(%rip), %xmm6
 	vmovsd	(%rax), %xmm7
@@ -1700,10 +1739,10 @@ main:
 	movq	%rax, %r15
 	.p2align 4,,10
 	.p2align 3
-.L197:
+.L212:
 	cmpq	$311, %rdi
-	ja	.L241
-.L185:
+	ja	.L256
+.L200:
 	movq	(%r15,%rdi,8), %rdx
 	leaq	1(%rdi), %rax
 	movq	%rdx, %rcx
@@ -1722,22 +1761,22 @@ main:
 	shrq	$43, %rcx
 	movq	%rax, 2496+_ZL3gen(%rip)
 	xorq	%rcx, %rdx
-	js	.L180
+	js	.L195
 	vxorpd	%xmm5, %xmm5, %xmm5
 	vcvtsi2sdq	%rdx, %xmm5, %xmm5
-.L181:
+.L196:
 	vaddsd	-144(%rbp), %xmm5, %xmm5
-	vmovsd	.LC22(%rip), %xmm2
+	vmovsd	.LC23(%rip), %xmm2
 	vmulsd	-152(%rbp), %xmm5, %xmm5
 	vcmplesd	%xmm5, %xmm2, %xmm1
-	vmovsd	.LC23(%rip), %xmm2
+	vmovsd	.LC24(%rip), %xmm2
 	vblendvpd	%xmm1, %xmm2, %xmm5, %xmm5
 	vfmadd132sd	%xmm6, %xmm7, %xmm5
-	vmovsd	.LC30(%rip), %xmm1
+	vmovsd	.LC31(%rip), %xmm1
 	vfmadd132sd	-136(%rbp), %xmm1, %xmm5
 	cmpq	$311, %rax
-	ja	.L242
-.L186:
+	ja	.L257
+.L201:
 	leaq	1(%rax), %rdi
 	movq	(%r15,%rax,8), %rax
 	movq	%rdi, 2496+_ZL3gen(%rip)
@@ -1756,71 +1795,71 @@ main:
 	movq	%rax, %rdx
 	shrq	$43, %rdx
 	xorq	%rdx, %rax
-	js	.L187
+	js	.L202
 	vxorpd	%xmm2, %xmm2, %xmm2
 	vcvtsi2sdq	%rax, %xmm2, %xmm2
-.L188:
+.L203:
 	vaddsd	-144(%rbp), %xmm2, %xmm2
-	vmovsd	.LC22(%rip), %xmm1
-	vmovsd	.LC30(%rip), %xmm9
+	vmovsd	.LC23(%rip), %xmm1
+	vmovsd	.LC31(%rip), %xmm9
 	vmulsd	-152(%rbp), %xmm2, %xmm2
 	movq	-160(%rbp), %rax
 	movq	%rbx, %rdx
 	xorl	%ecx, %ecx
 	vcmplesd	%xmm2, %xmm1, %xmm8
-	vmovsd	.LC23(%rip), %xmm1
+	vmovsd	.LC24(%rip), %xmm1
 	vblendvpd	%xmm8, %xmm1, %xmm2, %xmm2
 	vfmadd132sd	%xmm6, %xmm7, %xmm2
 	vfmadd132sd	-136(%rbp), %xmm9, %xmm2
 	vmulsd	%xmm2, %xmm2, %xmm2
-	jmp	.L195
+	jmp	.L210
 	.p2align 4,,10
 	.p2align 3
-.L244:
+.L259:
 	vmulsd	%xmm4, %xmm0, %xmm0
 	incq	%rdx
 	movl	$1, %ecx
-.L193:
+.L208:
 	addq	$8, %rax
 	cmpq	%rax, %r12
-	je	.L243
-.L195:
+	je	.L258
+.L210:
 	vsubsd	(%rax), %xmm5, %xmm1
 	vfmadd132sd	%xmm1, %xmm2, %xmm1
 	vmulsd	%xmm1, %xmm0, %xmm0
 	vcomisd	%xmm3, %xmm0
-	ja	.L244
+	ja	.L259
 	vcomisd	%xmm0, %xmm4
-	jbe	.L193
+	jbe	.L208
 	addq	$8, %rax
 	vmulsd	%xmm3, %xmm0, %xmm0
 	decq	%rdx
 	movl	$1, %ecx
 	cmpq	%rax, %r12
-	jne	.L195
-.L243:
+	jne	.L210
+.L258:
 	vmovsd	%xmm0, -128(%rbp)
 	testb	%cl, %cl
-	je	.L196
+	je	.L211
 	movq	%rdx, -120(%rbp)
 	movq	%rdx, %rbx
-.L196:
+.L211:
 	incq	%r13
 	cmpq	%r13, -176(%rbp)
-	jne	.L197
+	jne	.L212
 	incq	-240(%rbp)
 	movq	%rbx, %r13
 	movq	%r15, %rbx
 	movq	-240(%rbp), %rax
 	cmpq	%rax, -224(%rbp)
-	jne	.L179
+	jne	.L194
 	movq	-160(%rbp), %r15
 	movq	-256(%rbp), %r13
-.L178:
+.L193:
 	movq	-248(%rbp), %rdi
 	call	_ZN9stopwatch4stopEv.part.0
 	movl	$23, %edx
-	leaq	.LC39(%rip), %rsi
+	leaq	.LC40(%rip), %rsi
 	leaq	_ZSt4cout(%rip), %rdi
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	vmovsd	-128(%rbp), %xmm0
@@ -1828,7 +1867,7 @@ main:
 	call	_ZNSo9_M_insertIdEERSoT_@PLT
 	movq	%rax, %rdi
 	movl	$10, %edx
-	leaq	.LC34(%rip), %rsi
+	leaq	.LC35(%rip), %rsi
 	movq	%rax, %r12
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	movq	-120(%rbp), %rsi
@@ -1836,28 +1875,28 @@ main:
 	call	_ZNSo9_M_insertIlEERSoT_@PLT
 	movq	%rax, %rdi
 	movl	$8, %edx
-	leaq	.LC35(%rip), %rsi
+	leaq	.LC36(%rip), %rsi
 	movq	%rax, %r12
 	call	_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@PLT
 	cmpb	$0, -80(%rbp)
 	vmovsd	-88(%rbp), %xmm1
-	jne	.L245
-.L198:
+	jne	.L260
+.L213:
 	vmovsd	%xmm1, %xmm1, %xmm0
 	movq	%r12, %rdi
 	call	_ZNSo9_M_insertIdEERSoT_@PLT
 	movq	%rax, %rdi
-	leaq	.LC36(%rip), %rsi
+	leaq	.LC37(%rip), %rsi
 	call	_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@PLT
 	movq	%r15, %rdi
 	call	_ZdaPv@PLT
 	movq	%r13, %rdi
 	call	_ZdaPv@PLT
 	xorl	%eax, %eax
-	jmp	.L128
+	jmp	.L143
 	.p2align 4,,10
 	.p2align 3
-.L187:
+.L202:
 	movq	%rax, %rdx
 	shrq	%rdx
 	andl	$1, %eax
@@ -1865,10 +1904,10 @@ main:
 	vxorpd	%xmm2, %xmm2, %xmm2
 	vcvtsi2sdq	%rdx, %xmm2, %xmm2
 	vaddsd	%xmm2, %xmm2, %xmm2
-	jmp	.L188
+	jmp	.L203
 	.p2align 4,,10
 	.p2align 3
-.L180:
+.L195:
 	movq	%rdx, %rcx
 	shrq	%rcx
 	andl	$1, %edx
@@ -1876,10 +1915,10 @@ main:
 	vxorpd	%xmm5, %xmm5, %xmm5
 	vcvtsi2sdq	%rcx, %xmm5, %xmm5
 	vaddsd	%xmm5, %xmm5, %xmm5
-	jmp	.L181
+	jmp	.L196
 	.p2align 4,,10
 	.p2align 3
-.L164:
+.L179:
 	movq	%rax, %rdx
 	shrq	%rdx
 	andl	$1, %eax
@@ -1887,10 +1926,10 @@ main:
 	vxorpd	%xmm5, %xmm5, %xmm5
 	vcvtsi2sdq	%rdx, %xmm5, %xmm5
 	vaddsd	%xmm5, %xmm5, %xmm5
-	jmp	.L165
+	jmp	.L180
 	.p2align 4,,10
 	.p2align 3
-.L242:
+.L257:
 	movq	%r15, %rdi
 	vmovsd	%xmm0, -216(%rbp)
 	vmovsd	%xmm4, -208(%rbp)
@@ -1908,10 +1947,10 @@ main:
 	vmovsd	-168(%rbp), %xmm5
 	movabsq	$8202884508482404352, %r8
 	movabsq	$6148914691236517205, %r9
-	jmp	.L186
+	jmp	.L201
 	.p2align 4,,10
 	.p2align 3
-.L241:
+.L256:
 	movq	%r15, %rdi
 	vmovsd	%xmm0, -208(%rbp)
 	vmovsd	%xmm4, -200(%rbp)
@@ -1927,10 +1966,10 @@ main:
 	vmovsd	-168(%rbp), %xmm7
 	movabsq	$8202884508482404352, %r8
 	movabsq	$6148914691236517205, %r9
-	jmp	.L185
+	jmp	.L200
 	.p2align 4,,10
 	.p2align 3
-.L237:
+.L252:
 	movq	%r11, %rdi
 	movq	%r11, -160(%rbp)
 	vmovsd	%xmm0, -208(%rbp)
@@ -1949,28 +1988,28 @@ main:
 	movabsq	$-2270628950310912, %rsi
 	movabsq	$8202884508482404352, %r8
 	movabsq	$6148914691236517205, %r9
-	jmp	.L169
+	jmp	.L184
 	.p2align 4,,10
 	.p2align 3
-.L157:
+.L172:
 	vmovsd	-168(%rbp), %xmm1
 	vmovsd	-160(%rbp), %xmm7
 	movq	-192(%rbp), %r9
-	vfmadd132sd	.LC23(%rip), %xmm7, %xmm1
+	vfmadd132sd	.LC24(%rip), %xmm7, %xmm1
 	movq	-184(%rbp), %r8
 	movq	%r13, %rcx
 	movq	%r15, %rdx
-	jmp	.L226
+	jmp	.L241
 	.p2align 4,,10
 	.p2align 3
-.L139:
-	vmovsd	.LC23(%rip), %xmm0
+.L154:
+	vmovsd	.LC24(%rip), %xmm0
 	vmovsd	-160(%rbp), %xmm3
-	vmovsd	.LC30(%rip), %xmm4
+	vmovsd	.LC31(%rip), %xmm4
 	vfmadd132sd	-168(%rbp), %xmm3, %xmm0
 	vfmadd132sd	-136(%rbp), %xmm4, %xmm0
-	jmp	.L225
-.L132:
+	jmp	.L240
+.L147:
 	movq	%r12, %rdi
 	call	_ZNKSt5ctypeIcE13_M_widen_initEv@PLT
 	movq	(%r12), %rax
@@ -1978,12 +2017,12 @@ main:
 	movq	48(%rax), %rdx
 	movl	$10, %eax
 	cmpq	%rcx, %rdx
-	je	.L133
+	je	.L148
 	movl	$10, %esi
 	movq	%r12, %rdi
 	call	*%rdx
-	jmp	.L133
-.L245:
+	jmp	.L148
+.L260:
 	vmovsd	%xmm1, -136(%rbp)
 	call	clock@PLT
 	vxorpd	%xmm4, %xmm4, %xmm4
@@ -1991,8 +2030,8 @@ main:
 	vmovsd	-136(%rbp), %xmm1
 	vsubsd	-104(%rbp), %xmm0, %xmm0
 	vfmadd231sd	-72(%rbp), %xmm0, %xmm1
-	jmp	.L198
-.L240:
+	jmp	.L213
+.L255:
 	vmovsd	%xmm1, -136(%rbp)
 	call	clock@PLT
 	vxorpd	%xmm3, %xmm3, %xmm3
@@ -2000,8 +2039,8 @@ main:
 	vmovsd	-136(%rbp), %xmm1
 	vsubsd	-104(%rbp), %xmm0, %xmm0
 	vfmadd231sd	-72(%rbp), %xmm0, %xmm1
-	jmp	.L177
-.L236:
+	jmp	.L192
+.L251:
 	vmovsd	%xmm1, -136(%rbp)
 	call	clock@PLT
 	vxorpd	%xmm7, %xmm7, %xmm7
@@ -2009,8 +2048,8 @@ main:
 	vmovsd	-136(%rbp), %xmm1
 	vsubsd	-104(%rbp), %xmm0, %xmm0
 	vfmadd231sd	-72(%rbp), %xmm0, %xmm1
-	jmp	.L161
-.L231:
+	jmp	.L176
+.L246:
 	vmovsd	%xmm1, -136(%rbp)
 	call	clock@PLT
 	vxorpd	%xmm4, %xmm4, %xmm4
@@ -2018,10 +2057,10 @@ main:
 	vmovsd	-136(%rbp), %xmm1
 	vsubsd	-104(%rbp), %xmm0, %xmm0
 	vfmadd231sd	-72(%rbp), %xmm0, %xmm1
-	jmp	.L145
-.L228:
+	jmp	.L160
+.L243:
 	call	_ZSt16__throw_bad_castv@PLT
-.L227:
+.L242:
 	call	__stack_chk_fail@PLT
 	.cfi_endproc
 	.section	.text.unlikely
@@ -2029,7 +2068,7 @@ main:
 	.type	main.cold, @function
 main.cold:
 .LFSB8817:
-.L134:
+.L149:
 	.cfi_def_cfa 6, 16
 	.cfi_offset 3, -64
 	.cfi_offset 6, -16
@@ -2045,9 +2084,9 @@ main.cold:
 	.size	main, .-main
 	.section	.text.unlikely
 	.size	main.cold, .-main.cold
-.LCOLDE45:
+.LCOLDE46:
 	.section	.text.startup
-.LHOTE45:
+.LHOTE46:
 	.p2align 4
 	.type	_GLOBAL__sub_I__Z21init_random_positionslddPd, @function
 _GLOBAL__sub_I__Z21init_random_positionslddPd:
@@ -2071,7 +2110,7 @@ _GLOBAL__sub_I__Z21init_random_positionslddPd:
 	movabsq	$6364136223846793005, %rsi
 	.p2align 4,,10
 	.p2align 3
-.L247:
+.L262:
 	movq	%rcx, %rax
 	shrq	$62, %rax
 	xorq	%rcx, %rax
@@ -2080,8 +2119,8 @@ _GLOBAL__sub_I__Z21init_random_positionslddPd:
 	movq	%rcx, (%rdi,%rdx,8)
 	incq	%rdx
 	cmpq	$312, %rdx
-	jne	.L247
-	vmovapd	.LC46(%rip), %xmm0
+	jne	.L262
+	vmovapd	.LC47(%rip), %xmm0
 	movq	$312, 2496+_ZL3gen(%rip)
 	vmovapd	%xmm0, _ZL5distu(%rip)
 	popq	%rbp
@@ -2158,47 +2197,55 @@ _GLOBAL__sub_I__Z21init_random_positionslddPd:
 	.long	805306368
 	.set	.LC10,.LC8
 	.set	.LC11,.LC9
-	.align 32
+	.section	.rodata.cst16,"aM",@progbits,16
+	.align 16
 .LC12:
-	.quad	-2147483648
-	.quad	-2147483648
-	.quad	-2147483648
-	.quad	-2147483648
+	.long	-1
+	.long	2147483647
+	.long	0
+	.long	0
+	.section	.rodata.cst32
 	.align 32
 .LC13:
-	.quad	2147483647
-	.quad	2147483647
-	.quad	2147483647
-	.quad	2147483647
+	.quad	-2147483648
+	.quad	-2147483648
+	.quad	-2147483648
+	.quad	-2147483648
 	.align 32
 .LC14:
+	.quad	2147483647
+	.quad	2147483647
+	.quad	2147483647
+	.quad	2147483647
+	.align 32
+.LC15:
 	.quad	1
 	.quad	1
 	.quad	1
 	.quad	1
 	.align 32
-.LC15:
+.LC16:
 	.quad	-5403634167711393303
 	.quad	-5403634167711393303
 	.quad	-5403634167711393303
 	.quad	-5403634167711393303
-	.set	.LC16,.LC12
 	.set	.LC17,.LC13
 	.set	.LC18,.LC14
 	.set	.LC19,.LC15
+	.set	.LC20,.LC16
 	.section	.rodata.cst8,"aM",@progbits,8
 	.align 8
-.LC21:
+.LC22:
 	.long	0
 	.long	1005584384
-	.set	.LC22,.LC3
+	.set	.LC23,.LC3
 	.align 8
-.LC23:
+.LC24:
 	.long	-1
 	.long	1072693247
 	.section	.rodata.cst32
 	.align 32
-.LC29:
+.LC30:
 	.long	0
 	.long	1074790400
 	.long	0
@@ -2209,15 +2256,15 @@ _GLOBAL__sub_I__Z21init_random_positionslddPd:
 	.long	1072693248
 	.section	.rodata.cst8
 	.align 8
-.LC30:
+.LC31:
 	.long	0
 	.long	-1074790400
 	.align 8
-.LC31:
+.LC32:
 	.long	-1598689907
 	.long	1051772663
-	.set	.LC32,.LC29+16
-	.set	.LC46,.LC7
+	.set	.LC33,.LC30+16
+	.set	.LC47,.LC7
 	.hidden	__dso_handle
 	.ident	"GCC: (Ubuntu 11.3.0-1ubuntu1~22.04.1) 11.3.0"
 	.section	.note.GNU-stack,"",@progbits

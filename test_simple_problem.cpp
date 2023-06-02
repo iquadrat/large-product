@@ -157,20 +157,8 @@ double horizontal_product(__m256d v) {
   return _mm_cvtsd_f64(_mm_mul_sd(vlow, high64));  // reduce to scalar
 }
 
-
-__m256d mul_if_index_not_k(__m256d prod, __m256d u, __m256d x, int64_t index_base, int64_t k) {
-  __m256i index = _mm256_add_epi64(_mm256_set1_epi64x(index_base), _mm256_set_epi64x(3,2,1,0));
-  __m256i mask = _mm256_cmpeq_epi64(_mm256_set1_epi64x(k), index);
-  
-  __m256d mul = _mm256_mul_pd(prod, _mm256_sub_pd(u, x));
-  return _mm256_blendv_pd(mul, prod, _mm256_castsi256_pd(mask));
-}
-
-__m256d mul_if_not_zero(__m256d prod, __m256d u, __m256d x) {
-  //__m256d mask = _mm256_cmp_pd(prod, u, _CMP_EQ_OQ);
-  __m256d mul = _mm256_mul_pd(prod, _mm256_sub_pd(u, x));
-  //return _mm256_blendv_pd(mul, prod, mask);
-  return mul;
+__m256d mul_diff(__m256d prod, __m256d u, __m256d x) {
+  return _mm256_mul_pd(prod, _mm256_sub_pd(u, x));
 }
 
 
@@ -201,10 +189,10 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
       continue;
     }
    
-    prod1 = mul_if_not_zero(prod1, u_vec, _mm256_load_pd(&x[j]));
-    prod2 = mul_if_not_zero(prod2, u_vec, _mm256_load_pd(&x[j + 4]));
-    prod3 = mul_if_not_zero(prod3, u_vec, _mm256_load_pd(&x[j + 8]));
-    prod4 = mul_if_not_zero(prod4, u_vec, _mm256_load_pd(&x[j + 12]));
+    prod1 = mul_diff(prod1, u_vec, _mm256_load_pd(&x[j]));
+    prod2 = mul_diff(prod2, u_vec, _mm256_load_pd(&x[j + 4]));
+    prod3 = mul_diff(prod3, u_vec, _mm256_load_pd(&x[j + 8]));
+    prod4 = mul_diff(prod4, u_vec, _mm256_load_pd(&x[j + 12]));
      
     
  //  cout << j << " before: " << horizontal_product(prod1) << endl;
