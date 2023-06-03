@@ -53,18 +53,31 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   
   __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
   __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);
-  int high_mask_bits = _mm256_movemask_pd(high_mask);
-  int low_mask_bits  = _mm256_movemask_pd(low_mask);
+  //int high_mask_bits = _mm256_movemask_pd(high_mask);
+  //int low_mask_bits  = _mm256_movemask_pd(low_mask);
   
-  if (high_mask_bits) {
-    exponent += _mm_popcnt_u32(high_mask_bits);
+  const __m256d convert_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
+  __m256d inc = _mm256_and_pd(high_mask, convert_mask);
+  //print(inc);
+  __m256d dec = _mm256_and_pd(low_mask, convert_mask);
+  inc = _mm256_sub_pd(inc, dec);
+  
+  
+  if (true) {
+    //exponent += _mm_popcnt_u32(high_mask_bits);
     abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);  
   }
   
-  if (low_mask_bits) {
-    exponent -= _mm_popcnt_u32(low_mask_bits);
+  if (true) {
+    //exponent -= _mm_popcnt_u32(low_mask_bits);
     abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
   }
+  
+  __m128i inc_ints = _mm256_cvtpd_epi32(inc);
+   inc_ints = _mm_hadd_epi32(inc_ints, inc_ints);
+   inc_ints = _mm_hadd_epi32(inc_ints, inc_ints);
+  int inc_int = _mm_extract_epi32(inc_ints, 0);
+  exponent += inc_int;
   
   prod = abs_prod;
 }
