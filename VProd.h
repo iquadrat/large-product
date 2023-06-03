@@ -20,8 +20,39 @@ void debug(__m256d v) {
   print(v);
 }
 
+void print(__m256i v) {
+  int64_t x[4];
+  _mm256_store_si256(reinterpret_cast<__m256i*>(x), v);
+  cout << hex << x[0] << "," << x[1] << "," << x[2] << "," << x[3] << endl;
+
+}
+
 double* new_double_array(int64_t size) {
   return static_cast<double*>(_mm_malloc(sizeof(double) * size, 32));
+}
+
+
+__m256i extract_exponents(__m256d v) {
+  __m256i vi = _mm256_castpd_si256(v);
+  __m256i x = _mm256_srli_epi64(vi, 52);
+  __m256i z = _mm256_and_si256(x, _mm256_set1_epi64x(0x7ff));
+  __m256i y = _mm256_sub_epi64(z, _mm256_set1_epi64x(1023));
+  return y;
+}
+
+__m256d clear_exponent_and_sign(__m256d v) {
+  //const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x400fffffffffffff));
+  print(v);
+  print(_mm256_castpd_si256(v));
+  
+  const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x7ff0000000000000ULL));
+  const __m256d or_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
+  print(_mm256_castpd_si256(mask));
+  auto x = _mm256_andnot_pd(mask, v);
+  print(_mm256_castpd_si256(x));
+  auto z= _mm256_or_pd(x, or_mask);
+  print(_mm256_castpd_si256(z));
+  return z;
 }
 
 
@@ -67,10 +98,6 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   }
   
   prod = abs_prod;
-}
-
-__m256d mul_diff(__m256d prod, __m256d u, __m256d x) {
-  return _mm256_mul_pd(prod, _mm256_sub_pd(u, x));
 }
 
 __m256d save_mul(__m256d prod1, __m256d prod2, int64_t& exponent) {
@@ -188,6 +215,20 @@ void assert_approx(double a, double b) {
 
 
 inline void test_vprod() {
+  {
+    __m256i exp = extract_exponents(_mm256_set_pd(2, 1e20, 1e-20, -5e189));
+    assert_eq(1LL, _mm256_extract_epi64(exp, 3));
+    assert_eq(66LL, _mm256_extract_epi64(exp, 2));
+    assert_eq(-67LL, _mm256_extract_epi64(exp, 1));
+    assert_eq(630LL, _mm256_extract_epi64(exp, 0));
+  }
+
+  {
+    __m256d v = clear_exponent_and_sign(_mm256_set_pd(1, 2, 3, 4));
+    debug(v);
+  }
+
+
   {
     __m256d x = _mm256_set_pd(2e+26, 5e+150, 3e+50, 2.98334e+46);
     int64_t e = 0;
