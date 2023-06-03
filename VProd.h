@@ -49,35 +49,51 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   double p = pow(2,-exponent_low_high);
   const __m256d toolow  = _mm256_set1_pd(p);
   
-  __m256d abs_prod = abs(prod);
-  
+  __m256d abs_prod = abs(prod);  
   __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
   __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);
-  //int high_mask_bits = _mm256_movemask_pd(high_mask);
-  //int low_mask_bits  = _mm256_movemask_pd(low_mask);
+  int high_mask_bits = _mm256_movemask_pd(high_mask);
+  int low_mask_bits  = _mm256_movemask_pd(low_mask);
   
-  const __m256d convert_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
-  __m256d inc = _mm256_and_pd(high_mask, convert_mask);
-  //print(inc);
-  __m256d dec = _mm256_and_pd(low_mask, convert_mask);
-  inc = _mm256_sub_pd(inc, dec);
-  
-  
-  if (true) {
-    //exponent += _mm_popcnt_u32(high_mask_bits);
+  if (high_mask_bits) {
+    exponent += _mm_popcnt_u32(high_mask_bits);
     abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);  
   }
   
-  if (true) {
-    //exponent -= _mm_popcnt_u32(low_mask_bits);
+  if (low_mask_bits) {
+    exponent -= _mm_popcnt_u32(low_mask_bits);
     abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
   }
   
-  __m128i inc_ints = _mm256_cvtpd_epi32(inc);
-   inc_ints = _mm_hadd_epi32(inc_ints, inc_ints);
-   inc_ints = _mm_hadd_epi32(inc_ints, inc_ints);
-  int inc_int = _mm_extract_epi32(inc_ints, 0);
-  exponent += inc_int;
+  prod = abs_prod;
+}
+
+inline void checkoverflow(__m256d &prod, __m256d& exponent) {
+  const __m256d toohigh = _mm256_set1_pd(pow(2,exponent_low_high));
+  double p = pow(2,-exponent_low_high);
+  const __m256d toolow  = _mm256_set1_pd(p);
+  const __m256d convert_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
+  
+  __m256d abs_prod = abs(prod);
+  
+  __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
+  __m256d inc = _mm256_and_pd(high_mask, convert_mask);
+  exponent = _mm256_add_pd(exponent, inc);
+  abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);  
+
+    
+  __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);  
+  __m256d dec = _mm256_and_pd(low_mask, convert_mask);  
+  exponent = _mm256_sub_pd(exponent, dec);
+  abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
+
+  
+  if (true) {
+  }
+  
+  if (true) {
+  }
+  
   
   prod = abs_prod;
 }
@@ -87,6 +103,12 @@ __m256d mul_diff(__m256d prod, __m256d u, __m256d x) {
 }
 
 __m256d save_mul(__m256d prod1, __m256d prod2, int64_t& exponent) {
+  __m256d prod = _mm256_mul_pd(prod1, prod2);
+  checkoverflow(prod, exponent);
+  return prod; 
+}
+
+__m256d save_mul(__m256d prod1, __m256d prod2, __m256d& exponent) {
   __m256d prod = _mm256_mul_pd(prod1, prod2);
   checkoverflow(prod, exponent);
   return prod; 
@@ -125,7 +147,7 @@ class VProd {
     __m256d prod3;
     __m256d prod4;
     
-    int64_t exponent;
+    __m256d exponent;
  
   public:  
     VProd(double fraction = 1.0, int64_t exponent_ = 0): 
@@ -133,7 +155,7 @@ class VProd {
       prod2(_MM256_ONE),
       prod3(_MM256_ONE),
       prod4(_MM256_ONE),
-      exponent(exponent_)
+      exponent(_mm256_set_pd(0, 0, 0, exponent_))
     {
     }
 
@@ -161,8 +183,12 @@ class VProd {
 
     LargeExponentValue get() const {
       LargeExponentValue result;
-      result.exponent = exponent;
-
+    
+      __m128i ints = _mm256_cvtpd_epi32(exponent);
+      ints = _mm_hadd_epi32(ints, ints);
+      ints = _mm_hadd_epi32(ints, ints);
+      result.exponent = _mm_extract_epi32(ints, 0);
+    
       __m256d prod12 = save_mul(prod1, prod2, result.exponent);
       __m256d prod34 = save_mul(prod3, prod4, result.exponent);
       __m256d prod = save_mul(prod12, prod34, result.exponent);
@@ -173,10 +199,12 @@ class VProd {
     
     void debug() {
       cout << "prod1=";
-      ::debug(prod1);
+      print(prod1);
       cout << "prod2=";
-      ::debug(prod2);
-      cout << ", exponent=" << exponent << endl;
+      print(prod2);
+      cout << ", exponent=";
+      print(exponent);
+      cout << endl;
     }
 
 };
