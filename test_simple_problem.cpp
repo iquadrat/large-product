@@ -269,7 +269,7 @@ int main(int argc, char *argv[]) {
     prod_realreal(N,k,u,x,prod,exponent);
   }
   timing.stop();
-  cout << "prod_realreal: orod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
+  cout << "prod_realreal: prod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
 
   timing.reset();
   prod=1;
@@ -281,7 +281,7 @@ int main(int argc, char *argv[]) {
     prod_complexcomplex(N,k,u,v,x,y,prod,exponent);
   }
   timing.stop();
-  cout << "prod_complexcomplex: orod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
+  cout << "prod_complexcomplex: prod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
   
   timing.reset();
   prod=1;
@@ -292,7 +292,7 @@ int main(int argc, char *argv[]) {
     prod_realcomplex(N,u,x,y,prod,exponent);
   }
   timing.stop();
-  cout << "prod_realcomplex: orod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
+  cout << "prod_realcomplex: prod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
 
   timing.reset();
   prod=1;
@@ -304,7 +304,7 @@ int main(int argc, char *argv[]) {
     prod_complexreal(N,u,v,x,prod,exponent);
   }
   timing.stop();
-  cout << "prod_complexreal: orod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
+  cout << "prod_complexreal: prod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
 
 
 

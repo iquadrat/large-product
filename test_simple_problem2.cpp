@@ -16,6 +16,7 @@ g++ -std=c++11 -O3 -funroll-loops -march=native -lm -o test_simple_problem2 test
 #include <ctime>
 #include <unistd.h>
 #include <gnu/libc-version.h>
+#include "VProd.h"
 
 using namespace std;
 
@@ -97,23 +98,6 @@ class stopwatch {
 
 
 
-
-inline void checkoverflow(double &prod, long int &exponent) {
-  const long int exponent_low_high=511;
-  const double toohigh=pow(2,exponent_low_high);
-  const double toolow=pow(2,-exponent_low_high);
-  if (prod>toohigh) {
-    prod*=toolow;
-    exponent++;
-  } else if (prod<toolow)  {
-    prod*=toohigh;
-    exponent--;
-  }
-}
-
-
-
-
 // **************************************************************************
 // Simple code to optimize: 4 variantes. 
 // Most important 1. (prod_realreal) and 4. (prod_complexcomplex), 2. and 3. should be simply modification of 4. 
@@ -192,10 +176,47 @@ void prod_complexcomplex(const long int N, const long int k, const double u, con
 
 // **************************************************************************
 
+void test_realreal() {
+  
+  {
+    constexpr int64_t N = 16000;
+    double* x = new double[N];
+    gen = std::mt19937_64(42);
+    init_random_positions(N,-1,1,x);
+    
+    double prod1 = 7.1;
+    int64_t exponent1 = 42;
+    double prod2 = 0.02;
+    int64_t exponent2 = -2;
+    
+    prod_realreal(N, 61, 0.0521, 1.213, x, prod1, exponent1, prod2, exponent2);    
+    assert_approx(9.56257e-99, prod1);
+    assert_eq(-3L, exponent1);
+    assert_approx(5.14096e+09, prod2);
+    assert_eq(0L, exponent2);
 
+    
+    prod_realreal(N, 256, -10.23, 0.021, x, prod1, exponent1, prod2, exponent2);    
+    assert_approx(1.06159e+50, prod1);
+    assert_eq(101L, exponent1);
+    assert_approx(2.11219e-81, prod2);
+    assert_eq(-45L, exponent2);
+      
+  }
+
+}
+
+
+void test_all() {
+  test_vprod();
+  test_realreal();
+}
 
 
 int main(int argc, char *argv[]) {
+  test_all();
+  gen = std::mt19937_64();
+  
   if (argc!=3) {
     cout << argv[0] << "M N\n";
     cout << "M number of runs, N number of particles\n";
