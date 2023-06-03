@@ -190,6 +190,9 @@ class VProd {
   private:
     __m256d prod1;
     __m256d prod2;
+    __m256d prod3;
+    __m256d prod4;
+    
     int64_t exponent;
     
     void check_overflow_single(__m256d& prod) {
@@ -217,32 +220,33 @@ class VProd {
     VProd(double fraction = 1.0, int64_t exponent_ = 0): 
       prod1(_mm256_set_pd(1, 1, 1, fraction)),
       prod2(_MM256_ONE),
+      prod3(_MM256_ONE),
+      prod4(_MM256_ONE),
       exponent(exponent_)
     {
     }
 
-    void mul_no_overflow(__m256d mul1, __m256d mul2) {
+    void mul_no_overflow(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {
       prod1 = _mm256_mul_pd(prod1, mul1);
       prod2 = _mm256_mul_pd(prod2, mul2);
+      prod3 = _mm256_mul_pd(prod3, mul3);
+      prod4 = _mm256_mul_pd(prod4, mul4);
     }
     
     void check_overflow() {
       check_overflow_single(prod1);
       check_overflow_single(prod2);
+      check_overflow_single(prod3);
+      check_overflow_single(prod4);
     }
 
-    void mul(const VProd& other) {
-      prod1 = _mm256_mul_pd(prod1, other.prod1);
-      prod2 = _mm256_mul_pd(prod2, other.prod2);
-      exponent += other.exponent;
-      check_overflow();
-    }
-    
     LargeExponentValue get() const {
       LargeExponentValue result;
       result.exponent = exponent;
 
-       __m256d prod = save_mul(prod1, prod2, result.exponent);
+      __m256d prod12 = save_mul(prod1, prod2, result.exponent);
+      __m256d prod34 = save_mul(prod3, prod4, result.exponent);
+      __m256d prod = save_mul(prod12, prod34, result.exponent);
     
       result.fraction = horizontal_product(prod, result.exponent);
       return result;
@@ -267,7 +271,7 @@ class VProd {
 // N=1000..100000
 
 void prod_realreal(const long int N, const long int k, const double u, const double * x, double &prod_ref, long int &exponent_ref) {
-  const int64_t ELEMENTS_PER_LOOP = 2 * 4;
+  const int64_t ELEMENTS_PER_LOOP = 4 * 4;
   assert(N % ELEMENTS_PER_LOOP == 0);
   assert(reinterpret_cast<uintptr_t>(x) % 8 == 0);
 
@@ -285,7 +289,9 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
 
     prod1.mul_no_overflow(
       _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  0])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  4]))
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  4])),
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  8])),
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 12]))
     );
    
     if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
@@ -382,19 +388,19 @@ void test_all() {
   
   {
   VProd prod(2.0); // 2
-  prod.mul_no_overflow(_mm256_set_pd(2.0, 3.0, 5.0, 10.0), _MM256_ONE);  // 2 * 2 * 3 * 5 * 10 = 600
+  prod.mul_no_overflow(_mm256_set_pd(2.0, 3.0, 5.0, 10.0), _MM256_ONE, _MM256_ONE, _MM256_ONE);  // 2 * 2 * 3 * 5 * 10 = 600
   
   auto actual = prod.get();
   assert_eq(600., actual.fraction);
   assert_eq(0L, actual.exponent);
   
-  prod.mul_no_overflow(_MM256_ONE, _mm256_set_pd(1e100, -1e50, 1e25, 1e25));
+  prod.mul_no_overflow(_MM256_ONE, _mm256_set_pd(1e100, -1e50, 1e25, 1e25), _MM256_ONE, _MM256_ONE);
 
   actual = prod.get();
   assert_approx(8.95001e48, actual.fraction);
   assert_eq(1L, actual.exponent);
 
-  prod.mul_no_overflow(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200), _MM256_ONE);
+  prod.mul_no_overflow(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200), _MM256_ONE, _MM256_ONE, _MM256_ONE);
   prod.check_overflow();
   
   actual = prod.get();
@@ -402,13 +408,14 @@ void test_all() {
   assert_eq(2L, actual.exponent);
   
   VProd prod2(1.0);
-  prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120), _MM256_ONE);
+  prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120), _MM256_ONE, _MM256_ONE, _MM256_ONE);
   
+  /*
   prod.mul(prod2);
   actual = prod.get();
   assert_approx(6e12, actual.fraction);
   assert_eq(0L, actual.exponent);
-  }
+ */ }
   
   {
     constexpr int64_t N = 16000;
