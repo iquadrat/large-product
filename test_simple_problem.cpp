@@ -126,7 +126,7 @@ inline void checkoverflow(double &prod, long int &exponent) {
 }
 
 __m256d abs(__m256d a) {
-  __m256d mask = _mm256_set1_pd(-0.);
+  const __m256d mask = _mm256_set1_pd(-0.);
   return _mm256_andnot_pd(mask, a); 
 }
 
@@ -148,7 +148,7 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   
   exponent += _mm_popcnt_u32(high_mask_bits) - _mm_popcnt_u32(low_mask_bits);
   
-  prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);
+  abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);
   prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
 }
 
@@ -165,7 +165,7 @@ __m256d save_mul(__m256d prod1, __m256d prod2, int64_t& exponent) {
 double horizontal_product(__m256d v, int64_t& exponent) {
   __m256d one = _mm256_set1_pd(1);
   __m256d vhigh = _mm256_permute2f128_pd(v, one, 0b0100000);
-  __m256d vlow  = _mm256_permute2f128_pd(v, one, 0b0100001);
+  __m256d vlow  = _mm256_permute2f128_pd(v, one, 0b0100001);  
   __m256d x = save_mul(vlow, vhigh, exponent);
   
   __m128d prod1 = _mm256_castpd256_pd128(x);
@@ -177,6 +177,72 @@ double horizontal_product(__m256d v, int64_t& exponent) {
 }
 
 
+// To get acutal value is represented by fraction * 2 ^ exponent.
+// There is no guarantee that fraction is a value close to 1.0, hence the samee value can be represented in different ways.
+struct LargeExponentValue {
+  double fraction;
+  int64_t exponent;
+};
+
+class VProd {
+  private:
+    __m256d prod;
+    int64_t exponent;
+    
+  public:
+    VProd(double initial_value): 
+      prod(_mm256_set_pd(1,1,1,initial_value)),
+      exponent(0)
+    {
+    }
+
+    void mul_no_overflow(__m256d mul) {
+      prod = _mm256_mul_pd(prod, mul);
+    }
+    
+    void check_overflow() {
+      const __m256d toohigh = _mm256_set1_pd(pow(2, exponent_low_high));
+      const __m256d toolow  = _mm256_set1_pd(pow(2,-exponent_low_high));
+      
+      prod = abs(prod);
+      
+      __m256d high_mask = _mm256_cmp_pd(prod, toohigh, _CMP_GE_OS);
+      __m256d low_mask  = _mm256_cmp_pd(prod, toolow,  _CMP_LE_OS);      
+      int high_mask_bits = _mm256_movemask_pd(high_mask);
+      int low_mask_bits  = _mm256_movemask_pd(low_mask);
+  
+      if ((high_mask_bits ==0) && (low_mask_bits == 0)) [[likely]] {
+        return;
+      }
+  
+      exponent += _mm_popcnt_u32(high_mask_bits) - _mm_popcnt_u32(low_mask_bits);
+  
+      prod = _mm256_blendv_pd(prod, _mm256_mul_pd(prod, toolow), high_mask);
+      prod = _mm256_blendv_pd(prod, _mm256_mul_pd(prod, toohigh), low_mask);
+    }
+
+    void mul(const VProd& other) {
+      prod = _mm256_mul_pd(prod, other.prod);
+      exponent += other.exponent;
+      //check_overflow();  
+    }
+    
+    LargeExponentValue get() const {
+      LargeExponentValue result;
+      result.exponent = exponent;
+      result.fraction = horizontal_product(prod, result.exponent);
+      return result;
+    }
+    
+    void debug() {
+      cout << "prod=";
+      ::debug(prod);
+      cout << ", exponent=" << exponent << endl;
+    }
+    
+
+};
+
 
 // **************************************************************************
 // Simple code to optimize: 4 variantes. 
@@ -187,6 +253,7 @@ double horizontal_product(__m256d v, int64_t& exponent) {
 void prod_realreal(const long int N, const long int k, const double u, const double * x, double &prod_ref, long int &exponent_ref) {
    const int64_t ELEMENTS_PER_LOOP = 8 * 4;
    assert(N % ELEMENTS_PER_LOOP == 0);
+   assert(reinterpret_cast<uintptr_t>(x) % 8 == 0);
 
   __m256d prod1 = _mm256_set_pd(1, 1, 1, prod_ref);
   __m256d prod2 = _mm256_set1_pd(1);
@@ -302,10 +369,67 @@ void prod_complexcomplex(const long int N, const long int k, const double u, con
 
 // **************************************************************************
 
+template<typename T>
+void assert_eq(T a, T b) {
+  if (a != b) {
+    cerr << "Expected a == b but " << a << " != " << b << endl;
+    throw "assertion failed";
+  } 
+}
+
+void assert_approx(double a, double b) {
+  const double ratio = abs(a/b) -1;
+  if (ratio > 1e-5) {
+    cerr << "Expected a ~= b but " << a << " != " << b << endl;
+    throw "assertion failed";
+  } 
+}
+
+
+void test_all() {
+
+  {
+    __m256d x = _mm256_set_pd(2e+26, 5e+150, 3e+50, 2.98334e+46);
+    int64_t e = 0;
+    double prod = horizontal_product(x, e);
+    assert_approx(1.335046e+120, prod);
+    assert_eq(1L, e);
+  }
+
+  VProd prod(2.0); // 2
+  prod.mul_no_overflow(_mm256_set_pd(2.0, 3.0, 5.0, 10.0));  // 2 * 2 * 3 * 5 * 10 = 600
+  
+  auto actual = prod.get();
+  assert_eq(600., actual.fraction);
+  assert_eq(0L, actual.exponent);
+  
+  prod.mul_no_overflow(_mm256_set_pd(1e100, -1e50, 1e25, 1e25));
+
+  actual = prod.get();
+  assert_approx(8.95001e48, actual.fraction);
+  assert_eq(1L, actual.exponent);
+
+  prod.mul_no_overflow(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200));
+  prod.check_overflow();
+  
+  actual = prod.get();
+  assert_approx(1.3350445e+70, actual.fraction);
+  assert_eq(2L, actual.exponent);
+  
+  VProd prod2(1.0);
+  prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120));
+  
+  prod.mul(prod2);
+  actual = prod.get();
+  assert_approx(6e12, actual.fraction);
+  assert_eq(0L, actual.exponent);
+}
 
 
 
 int main(int argc, char *argv[]) {
+  test_all();
+  
   if (argc!=3) {
     cout << argv[0] << "M N\n";
     cout << "M number of runs, N number of particles\n";
