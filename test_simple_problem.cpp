@@ -238,7 +238,6 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   __m256d prod = save_mul(prodX, prodY, exponent);
 
   prod_ref = horizontal_product(prod, exponent);
-  exponent_ref = exponent;
   
   for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
     if (j == k) {
@@ -247,6 +246,8 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
     prod_ref *= abs(u - x[j]);
     checkoverflow(prod_ref, exponent); 
   }
+
+  exponent_ref = exponent;
   
   //cout << "prod=" << prod_ref << ", exponent=" << exponent_ref << endl;  
 } 
