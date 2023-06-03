@@ -206,16 +206,11 @@ class VProd {
       int high_mask_bits = _mm256_movemask_pd(high_mask);
       int low_mask_bits  = _mm256_movemask_pd(low_mask);
   
-      /*if ((high_mask_bits ==0) && (low_mask_bits == 0)) [[likely]] {
-        return;
-      }*/
-  
-      //exponent += _mm_popcnt_u32(high_mask_bits) - _mm_popcnt_u32(low_mask_bits);
-  
       if (high_mask_bits) {
         exponent += _mm_popcnt_u32(high_mask_bits);
         prod = _mm256_blendv_pd(prod, _mm256_mul_pd(prod, toolow), high_mask);
       }
+      
       if (low_mask_bits) {
         exponent -= _mm_popcnt_u32(low_mask_bits);
         prod = _mm256_blendv_pd(prod, _mm256_mul_pd(prod, toohigh), low_mask);
@@ -244,6 +239,14 @@ class VProd {
       check_overflow_single(prod2);
       check_overflow_single(prod3);
       check_overflow_single(prod4);
+    }
+    
+    void mul(const VProd& other) {
+      prod1 = save_mul(prod1, other.prod1, exponent);
+      prod2 = save_mul(prod2, other.prod2, exponent);
+      prod3 = save_mul(prod3, other.prod3, exponent);
+      prod4 = save_mul(prod4, other.prod4, exponent);
+      exponent += other.exponent;
     }
 
     LargeExponentValue get() const {
@@ -277,11 +280,12 @@ class VProd {
 // N=1000..100000
 
 void prod_realreal(const long int N, const long int k, const double u, const double * x, double &prod_ref, long int &exponent_ref) {
-  const int64_t ELEMENTS_PER_LOOP = 4 * 4;
+  const int64_t ELEMENTS_PER_LOOP = 8 * 4;
   assert(N % ELEMENTS_PER_LOOP == 0);
   assert(reinterpret_cast<uintptr_t>(x) % 8 == 0);
 
   VProd prod1(prod_ref, exponent_ref);
+  VProd prod2;
   
   __m256d u_vec = _mm256_set1_pd(u);
   
@@ -295,13 +299,21 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
       _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  8])),
       _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 12]))
     );
+    prod2.mul_no_overflow(
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 16])),
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 20])),
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 24])),
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 28]))
+    );
    
     if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
       prod1.check_overflow();
+      prod2.check_overflow();
     }
   }
 
   prod1.check_overflow();
+  prod2.check_overflow();
   
   for (int64_t j=skipj + ELEMENTS_PER_LOOP; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
     prod1.mul_no_overflow(
@@ -310,13 +322,23 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
       _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  8])),
       _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 12]))
     );
-   
+    prod2.mul_no_overflow(
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 16])),
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 20])),
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 24])),
+      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 28]))
+    );
+       
     if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
       prod1.check_overflow();
+      prod2.check_overflow();
     }
   }
   
   prod1.check_overflow();
+  prod2.check_overflow();
+  
+  prod1.mul(prod2);
   
   auto prod = prod1.get();
   prod_ref = abs(prod.fraction);
