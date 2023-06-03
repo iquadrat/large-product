@@ -190,9 +190,9 @@ class VProd {
     int64_t exponent;
     
   public:
-    VProd(double initial_value): 
-      prod(_mm256_set_pd(1,1,1,initial_value)),
-      exponent(0)
+    VProd(double fraction = 1.0, int64_t exponent_ = 0): 
+      prod(_mm256_set_pd(1, 1, 1, fraction)),
+      exponent(exponent_)
     {
     }
 
@@ -224,7 +224,7 @@ class VProd {
     void mul(const VProd& other) {
       prod = _mm256_mul_pd(prod, other.prod);
       exponent += other.exponent;
-      //check_overflow();  
+      check_overflow();  
     }
     
     LargeExponentValue get() const {
@@ -251,22 +251,15 @@ class VProd {
 // N=1000..100000
 
 void prod_realreal(const long int N, const long int k, const double u, const double * x, double &prod_ref, long int &exponent_ref) {
-   const int64_t ELEMENTS_PER_LOOP = 8 * 4;
-   assert(N % ELEMENTS_PER_LOOP == 0);
-   assert(reinterpret_cast<uintptr_t>(x) % 8 == 0);
+  const int64_t ELEMENTS_PER_LOOP = 2 * 4;
+  assert(N % ELEMENTS_PER_LOOP == 0);
+  assert(reinterpret_cast<uintptr_t>(x) % 8 == 0);
 
-  __m256d prod1 = _mm256_set_pd(1, 1, 1, prod_ref);
-  __m256d prod2 = _mm256_set1_pd(1);
-  __m256d prod3 = prod2;
-  __m256d prod4 = prod2;  
-  __m256d prod5 = prod2;
-  __m256d prod6 = prod2;
-  __m256d prod7 = prod2;
-  __m256d prod8 = prod2;
+  VProd prod1(prod_ref, exponent_ref);
+  VProd prod2(1, 0);
   
   __m256d u_vec = _mm256_set1_pd(u);
   
-  int64_t exponent = exponent_ref;  
   int64_t skipj = k & (-ELEMENTS_PER_LOOP);
   
   // prod of u-x[j] for all j!=k
@@ -274,56 +267,34 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
     if (j == skipj) [[unlikely]] {
       continue;
     }
-   
-    prod1 = mul_diff(prod1, u_vec, _mm256_load_pd(&x[j]));
-    prod2 = mul_diff(prod2, u_vec, _mm256_load_pd(&x[j + 4]));
-    prod3 = mul_diff(prod3, u_vec, _mm256_load_pd(&x[j + 8]));
-    prod4 = mul_diff(prod4, u_vec, _mm256_load_pd(&x[j + 12]));
 
-    prod5 = mul_diff(prod5, u_vec, _mm256_load_pd(&x[j + 16]));
-    prod6 = mul_diff(prod6, u_vec, _mm256_load_pd(&x[j + 20]));
-    prod7 = mul_diff(prod7, u_vec, _mm256_load_pd(&x[j + 24]));
-    prod8 = mul_diff(prod8, u_vec, _mm256_load_pd(&x[j + 28])); 
+    prod1.mul_no_overflow(_mm256_sub_pd(u_vec, _mm256_load_pd(&x[j])));
+    prod2.mul_no_overflow(_mm256_sub_pd(u_vec, _mm256_load_pd(&x[j+4])));
    
-   if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
-      checkoverflow(prod1, exponent);
-      checkoverflow(prod2, exponent);
-      checkoverflow(prod3, exponent);
-      checkoverflow(prod4, exponent);
-      checkoverflow(prod5, exponent);
-      checkoverflow(prod6, exponent);
-      checkoverflow(prod7, exponent);
-      checkoverflow(prod8, exponent);      
-   }
-   
+    if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
+      prod1.check_overflow();
+      prod2.check_overflow();
+    }
   }
 
-  checkoverflow(prod1, exponent);
-  checkoverflow(prod2, exponent);
-  checkoverflow(prod3, exponent);
-  checkoverflow(prod4, exponent);
-  checkoverflow(prod5, exponent);
-  checkoverflow(prod6, exponent);
-  checkoverflow(prod7, exponent);
-  checkoverflow(prod8, exponent); 
+  prod1.check_overflow();
+  prod2.check_overflow();
   
-  __m256d prodX = save_mul(save_mul(prod1, prod2, exponent), save_mul(prod3, prod4, exponent), exponent);
-  __m256d prodY = save_mul(save_mul(prod5, prod6, exponent), save_mul(prod7, prod8, exponent), exponent); 
-  __m256d prod = save_mul(prodX, prodY, exponent);
+  prod1.mul(prod2);
   
-  prod_ref = abs(horizontal_product(prod, exponent));
+  auto prod = prod1.get();
+  prod_ref = abs(prod.fraction);
+  exponent_ref = prod.exponent;
   
   for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
     if (j == k) {
       continue;
     } 
     prod_ref *= abs(u - x[j]);
-    checkoverflow(prod_ref, exponent); 
+    checkoverflow(prod_ref, exponent_ref); 
   }
 
-  exponent_ref = exponent;
-  
-//  cout << "prod=" << prod_ref << ", exponent=" << exponent_ref << endl;  
+  //cout << "prod=" << prod_ref << ", exponent=" << exponent_ref << endl;  
 } 
 
 void prod_realcomplex(const long int N, const double u, const double * x, const double * y, double &prod, long int &exponent) {
@@ -378,7 +349,7 @@ void assert_eq(T a, T b) {
 }
 
 void assert_approx(double a, double b) {
-  const double ratio = abs(a/b) -1;
+  const double ratio = abs(abs(a/b) - 1);
   if (ratio > 1e-5) {
     cerr << "Expected a ~= b but " << a << " != " << b << endl;
     throw "assertion failed";
@@ -395,7 +366,8 @@ void test_all() {
     assert_approx(1.335046e+120, prod);
     assert_eq(1L, e);
   }
-
+  
+  {
   VProd prod(2.0); // 2
   prod.mul_no_overflow(_mm256_set_pd(2.0, 3.0, 5.0, 10.0));  // 2 * 2 * 3 * 5 * 10 = 600
   
@@ -423,12 +395,32 @@ void test_all() {
   actual = prod.get();
   assert_approx(6e12, actual.fraction);
   assert_eq(0L, actual.exponent);
+  }
+  
+  {
+    constexpr int64_t N = 16000;
+    double* x = new double[N];
+    gen = std::mt19937_64(42);
+    init_random_positions(N,-1,1,x);
+    double prod = 7.1;
+    int64_t exponent = 42;
+    
+    prod_realreal(N, 61, 0.0521, x, prod, exponent);    
+    assert_approx(9.56257e-99, prod);
+    assert_eq(-3L, exponent);
+    
+    prod_realreal(N, 256, -10.23, x, prod, exponent);    
+    assert_approx(1.06159e+50, prod);
+    assert_eq(101L, exponent);   
+  }
+  
 }
 
 
 
 int main(int argc, char *argv[]) {
   test_all();
+  gen = std::mt19937_64();
   
   if (argc!=3) {
     cout << argv[0] << "M N\n";
