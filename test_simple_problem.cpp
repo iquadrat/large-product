@@ -169,22 +169,25 @@ __m256d mul_diff(__m256d prod, __m256d u, __m256d x) {
 // N=1000..100000
 
 void prod_realreal(const long int N, const long int k, const double u, const double * x, double &prod_ref, long int &exponent_ref) {
-   const int64_t ELEMENTS_PER_LOOP = 4 * 4;
+   const int64_t ELEMENTS_PER_LOOP = 8 * 4;
    assert(N % ELEMENTS_PER_LOOP == 0);
 
   __m256d prod1 = _mm256_set_pd(1, 1, 1, prod_ref);
-  __m256d prod2 = _mm256_set_pd(1, 1, 1, 1);
-  __m256d prod3 = _mm256_set_pd(1, 1, 1, 1);
-  __m256d prod4 = _mm256_set_pd(1, 1, 1, 1);
+  __m256d prod2 = _mm256_set1_pd(1);
+  __m256d prod3 = prod2;
+  __m256d prod4 = prod2;  
+  __m256d prod5 = prod2;
+  __m256d prod6 = prod2;
+  __m256d prod7 = prod2;
+  __m256d prod8 = prod2;
+  
   __m256d u_vec = _mm256_set1_pd(u);
   
-  int64_t exponent = exponent_ref;
-  
+  int64_t exponent = exponent_ref;  
   int64_t skipj = k & (-ELEMENTS_PER_LOOP);
-  //cout << "k = " << k << ", skip j = " << skipj << endl;
   
   // prod of u-x[j] for all j!=k
-  for (int64_t j=0; j<N; j += 16) {
+  for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) {
     if (j == skipj) {
       continue;
     }
@@ -193,15 +196,21 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
     prod2 = mul_diff(prod2, u_vec, _mm256_load_pd(&x[j + 4]));
     prod3 = mul_diff(prod3, u_vec, _mm256_load_pd(&x[j + 8]));
     prod4 = mul_diff(prod4, u_vec, _mm256_load_pd(&x[j + 12]));
-     
-    
- //  cout << j << " before: " << horizontal_product(prod1) << endl;
+
+    prod5 = mul_diff(prod5, u_vec, _mm256_load_pd(&x[j + 16]));
+    prod6 = mul_diff(prod6, u_vec, _mm256_load_pd(&x[j + 20]));
+    prod7 = mul_diff(prod7, u_vec, _mm256_load_pd(&x[j + 24]));
+    prod8 = mul_diff(prod8, u_vec, _mm256_load_pd(&x[j + 28])); 
    
-   if ((j / 16) % 8 == 0) { 
+   if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
       checkoverflow(prod1, exponent);
       checkoverflow(prod2, exponent);
       checkoverflow(prod3, exponent);
       checkoverflow(prod4, exponent);
+      checkoverflow(prod5, exponent);
+      checkoverflow(prod6, exponent);
+      checkoverflow(prod7, exponent);
+      checkoverflow(prod8, exponent);      
    }
   }
 
@@ -209,13 +218,25 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   checkoverflow(prod2, exponent);
   checkoverflow(prod3, exponent);
   checkoverflow(prod4, exponent);
+  checkoverflow(prod5, exponent);
+  checkoverflow(prod6, exponent);
+  checkoverflow(prod7, exponent);
+  checkoverflow(prod8, exponent); 
   
-  __m256d prod = _mm256_mul_pd(_mm256_mul_pd(prod1, prod2), _mm256_mul_pd(prod3, prod4));
+  __m256d prodX = _mm256_mul_pd(_mm256_mul_pd(prod1, prod2), _mm256_mul_pd(prod3, prod4));
+  __m256d prodY = _mm256_mul_pd(_mm256_mul_pd(prod5, prod6), _mm256_mul_pd(prod7, prod8));
   
-  checkoverflow(prod, exponent);
-  checkoverflow(prod, exponent);
-  checkoverflow(prod, exponent);
+  checkoverflow(prodX, exponent);
+  checkoverflow(prodX, exponent);
+  checkoverflow(prodX, exponent);
+
+  checkoverflow(prodY, exponent);
+  checkoverflow(prodY, exponent);
+  checkoverflow(prodY, exponent);
   
+  __m256d prod = _mm256_mul_pd(prodX, prodY);
+  checkoverflow(prod, exponent); 
+
   prod_ref = horizontal_product(prod);
   exponent_ref = exponent;
   
