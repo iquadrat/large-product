@@ -106,7 +106,7 @@ void print(__m256d v) {
   cout << x[0] << "," << x[1] << "," << x[2] << "," << x[3] << endl;
 }
 
-constexpr long int exponent_low_high=255;
+constexpr long int exponent_low_high=511;
 
 inline void checkoverflow(double &prod, long int &exponent) {
   const double toohigh=pow(2,exponent_low_high);
@@ -138,28 +138,38 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   int low_mask_bits  = _mm256_movemask_pd(low_mask);
   
   if ((high_mask_bits | low_mask_bits) == 0) {
-    //return;
+    return;
   }
   
-  exponent += _mm_popcnt_u32(high_mask_bits);
-  exponent -= _mm_popcnt_u32(low_mask_bits);
+  exponent += _mm_popcnt_u32(high_mask_bits) - _mm_popcnt_u32(low_mask_bits);
   
   prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);
   prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
 }
 
-
-double horizontal_product(__m256d v) {
-  __m128d vlow  = _mm256_castpd256_pd128(v);
-  __m128d vhigh = _mm256_extractf128_pd(v, 1); // high 128
-  __m128d prod1  = _mm_mul_pd(vlow, vhigh);     // reduce down to 128
-  __m128d high64 = _mm_unpackhi_pd(prod1, prod1);
-  return _mm_cvtsd_f64(_mm_mul_sd(vlow, high64));  // reduce to scalar
-}
-
 __m256d mul_diff(__m256d prod, __m256d u, __m256d x) {
   return _mm256_mul_pd(prod, _mm256_sub_pd(u, x));
 }
+
+__m256d save_mul(__m256d prod1, __m256d prod2, int64_t& exponent) {
+  __m256d prod = _mm256_mul_pd(prod1, prod2);
+  checkoverflow(prod, exponent);
+  return prod; 
+}
+
+double horizontal_product(__m256d v, int64_t& exponent) {
+  __m256d one = _mm256_set1_pd(1);
+  __m256d vhigh = _mm256_unpackhi_pd(v, one);
+  __m256d vlow = _mm256_unpacklo_pd(v, one); 
+   
+  __m128d prod1 = _mm256_castpd256_pd128(save_mul(vlow, vhigh, exponent));
+  
+  __m128d high64 = _mm_unpackhi_pd(prod1, prod1);
+  double result = _mm_cvtsd_f64(_mm_mul_sd(prod1, high64));  // reduce to scalar
+  checkoverflow(result, exponent);
+  return result;
+}
+
 
 
 // **************************************************************************
@@ -223,27 +233,13 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   checkoverflow(prod7, exponent);
   checkoverflow(prod8, exponent); 
   
-  __m256d prodX = _mm256_mul_pd(_mm256_mul_pd(prod1, prod2), _mm256_mul_pd(prod3, prod4));
-  __m256d prodY = _mm256_mul_pd(_mm256_mul_pd(prod5, prod6), _mm256_mul_pd(prod7, prod8));
-  
-  checkoverflow(prodX, exponent);
-  checkoverflow(prodX, exponent);
-  checkoverflow(prodX, exponent);
+  __m256d prodX = save_mul(save_mul(prod1, prod2, exponent), save_mul(prod3, prod4, exponent), exponent);
+  __m256d prodY = save_mul(save_mul(prod5, prod6, exponent), save_mul(prod7, prod8, exponent), exponent); 
+  __m256d prod = save_mul(prodX, prodY, exponent);
 
-  checkoverflow(prodY, exponent);
-  checkoverflow(prodY, exponent);
-  checkoverflow(prodY, exponent);
-  
-  __m256d prod = _mm256_mul_pd(prodX, prodY);
-  checkoverflow(prod, exponent); 
-
-  prod_ref = horizontal_product(prod);
+  prod_ref = horizontal_product(prod, exponent);
   exponent_ref = exponent;
   
-  checkoverflow(prod_ref, exponent_ref);
-  checkoverflow(prod_ref, exponent_ref);
-  checkoverflow(prod_ref, exponent_ref);
- 
   for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
     if (j == k) {
       continue;
@@ -309,8 +305,10 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  int64_t e = 0;
   __m256d xx = _mm256_set_pd(1,2,3,4);
-  cout << " product: " << horizontal_product(xx) << endl;
+  cout << " product: " << horizontal_product(xx, e) << endl;
+  cout << " exponent: " << e << endl;
 
   long int M = atoi(argv[1]);
   long int N = atoi(argv[2]);
