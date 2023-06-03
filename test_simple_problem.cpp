@@ -49,6 +49,11 @@ void init_random_positions(const long int N, const double a, const double b, dou
 }
 
 
+void debug(__m256d v) {
+  double x[4];
+  _mm256_store_pd(x, v);
+  cout << x[0] << " " << x[1] << " " << x[2] << " " << x[3] << endl;
+}
 
 
 class stopwatch {
@@ -159,13 +164,21 @@ __m256d save_mul(__m256d prod1, __m256d prod2, int64_t& exponent) {
 
 double horizontal_product(__m256d v, int64_t& exponent) {
   __m256d one = _mm256_set1_pd(1);
-  __m256d vhigh = _mm256_unpackhi_pd(v, one);
-  __m256d vlow = _mm256_unpacklo_pd(v, one); 
-   
-  __m128d prod1 = _mm256_castpd256_pd128(save_mul(vlow, vhigh, exponent));
+  __m256d vhigh = _mm256_permute2f128_pd(v, one, 0b0100000);
+  __m256d vlow  = _mm256_permute2f128_pd(v, one, 0b0100001);
+  /*
+  cout << "vhigh=";
+  debug(vhigh);
+  cout << "vlog=";
+  debug(vlow);
+   */
+  __m256d x = save_mul(vlow, vhigh, exponent);
+ // debug(x);
+  
+  __m128d prod1 = _mm256_castpd256_pd128(x);
   
   __m128d high64 = _mm_unpackhi_pd(prod1, prod1);
-  double result = _mm_cvtsd_f64(_mm_mul_sd(prod1, high64));  // reduce to scalar
+  double result = abs(_mm_cvtsd_f64(_mm_mul_sd(prod1, high64)));  // reduce to scalar
   checkoverflow(result, exponent);
   return result;
 }
@@ -222,6 +235,7 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
       checkoverflow(prod7, exponent);
       checkoverflow(prod8, exponent);      
    }
+   
   }
 
   checkoverflow(prod1, exponent);
@@ -236,8 +250,13 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   __m256d prodX = save_mul(save_mul(prod1, prod2, exponent), save_mul(prod3, prod4, exponent), exponent);
   __m256d prodY = save_mul(save_mul(prod5, prod6, exponent), save_mul(prod7, prod8, exponent), exponent); 
   __m256d prod = save_mul(prodX, prodY, exponent);
-
-  prod_ref = horizontal_product(prod, exponent);
+  
+  debug(prod);
+  cout << "before " << exponent << endl;
+  
+  prod_ref = abs(horizontal_product(prod, exponent));
+  
+  cout << " = " << prod_ref << " / " << exponent << endl;
   
   for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
     if (j == k) {
@@ -249,7 +268,7 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
 
   exponent_ref = exponent;
   
-  //cout << "prod=" << prod_ref << ", exponent=" << exponent_ref << endl;  
+  cout << "prod=" << prod_ref << ", exponent=" << exponent_ref << endl;  
 } 
 
 void prod_realcomplex(const long int N, const double u, const double * x, const double * y, double &prod, long int &exponent) {
