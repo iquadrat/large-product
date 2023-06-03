@@ -1,3 +1,5 @@
 test_simple_problem
+test_simple_problem2
 *.s
 a.out
+*~

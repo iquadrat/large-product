@@ -122,17 +122,21 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
   // prod of u-x[j] for all j!=k
   for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
     if (j != skipj) [[likely]] {
+      register __m256d x0 = _mm256_load_pd(&x[j +  0]);
+      register __m256d x1 = _mm256_load_pd(&x[j +  4]);
+      register __m256d x2 = _mm256_load_pd(&x[j +  8]);
+      register __m256d x3 = _mm256_load_pd(&x[j + 12]);
       prod1.mul_no_overflow(
-        _mm256_sub_pd(u1_vec, _mm256_load_pd(&x[j +  0])),
-        _mm256_sub_pd(u1_vec, _mm256_load_pd(&x[j +  4])),
-        _mm256_sub_pd(u1_vec, _mm256_load_pd(&x[j +  8])),
-        _mm256_sub_pd(u1_vec, _mm256_load_pd(&x[j + 12]))
+        _mm256_sub_pd(u1_vec, x0),
+        _mm256_sub_pd(u1_vec, x1),
+        _mm256_sub_pd(u1_vec, x2),
+        _mm256_sub_pd(u1_vec, x3)
       );
       prod2.mul_no_overflow(
-        _mm256_sub_pd(u2_vec, _mm256_load_pd(&x[j +  0])),
-        _mm256_sub_pd(u2_vec, _mm256_load_pd(&x[j +  4])),
-        _mm256_sub_pd(u2_vec, _mm256_load_pd(&x[j +  8])),
-        _mm256_sub_pd(u2_vec, _mm256_load_pd(&x[j + 12]))
+        _mm256_sub_pd(u2_vec, x0),
+        _mm256_sub_pd(u2_vec, x1),
+        _mm256_sub_pd(u2_vec, x2),
+        _mm256_sub_pd(u2_vec, x3)
       );
     }
    
@@ -289,8 +293,8 @@ int main(int argc, char *argv[]) {
   }
   timing.stop();
   cout << "prod_realreal: prod=" << prod/prod0 << " exponent=" << exponent-exponent0 << " timing=" << timing.get_time() << " seconds\n";
-
   timing.reset();
+  
   prod=1;
   exponent=0;
   timing.start();

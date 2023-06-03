@@ -268,8 +268,8 @@ int main(int argc, char *argv[]) {
   }
   timing.stop();
   cout << "prod_realreal: prod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
-
   timing.reset();
+ 
   prod=1;
   exponent=0;
   timing.start();
