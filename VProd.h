@@ -41,18 +41,12 @@ __m256i extract_exponents(__m256d v) {
 }
 
 __m256d clear_exponent_and_sign(__m256d v) {
-  //const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x400fffffffffffff));
-  print(v);
-  print(_mm256_castpd_si256(v));
-  
-  const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x7ff0000000000000ULL));
+  // clear first two bits (sign and highest mantisse)
+  // set mantisse to 0x3ff
+  const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(   0xc000000000000000ULL));
   const __m256d or_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
-  print(_mm256_castpd_si256(mask));
   auto x = _mm256_andnot_pd(mask, v);
-  print(_mm256_castpd_si256(x));
-  auto z= _mm256_or_pd(x, or_mask);
-  print(_mm256_castpd_si256(z));
-  return z;
+  return _mm256_or_pd(x, or_mask);
 }
 
 
@@ -224,7 +218,7 @@ inline void test_vprod() {
   }
 
   {
-    __m256d v = clear_exponent_and_sign(_mm256_set_pd(1, 2, 3, 4));
+    __m256d v = clear_exponent_and_sign(_mm256_set_pd(1, 2, 3, -4));
     debug(v);
   }
 
