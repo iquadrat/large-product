@@ -292,19 +292,21 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   int64_t skipj = k & (-ELEMENTS_PER_LOOP);
   
   // prod of u-x[j] for all j!=k
-  for (int64_t j=0; j<skipj; j += ELEMENTS_PER_LOOP) [[likely]] {
-    prod1.mul_no_overflow(
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  0])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  4])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  8])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 12]))
-    );
-    prod2.mul_no_overflow(
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 16])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 20])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 24])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 28]))
-    );
+  for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
+    if (j != skipj) [[likely]] {
+      prod1.mul_no_overflow(
+        _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  0])),
+        _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  4])),
+        _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  8])),
+        _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 12]))
+      );
+      prod2.mul_no_overflow(
+        _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 16])),
+        _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 20])),
+        _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 24])),
+        _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 28]))
+      );
+    }
    
     if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
       prod1.check_overflow();
@@ -312,29 +314,6 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
     }
   }
 
-  prod1.check_overflow();
-  prod2.check_overflow();
-  
-  for (int64_t j=skipj + ELEMENTS_PER_LOOP; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
-    prod1.mul_no_overflow(
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  0])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  4])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j +  8])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 12]))
-    );
-    prod2.mul_no_overflow(
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 16])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 20])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 24])),
-      _mm256_sub_pd(u_vec, _mm256_load_pd(&x[j + 28]))
-    );
-       
-    if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
-      prod1.check_overflow();
-      prod2.check_overflow();
-    }
-  }
-  
   prod1.check_overflow();
   prod2.check_overflow();
   
