@@ -142,7 +142,7 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   int high_mask_bits = _mm256_movemask_pd(high_mask);
   int low_mask_bits  = _mm256_movemask_pd(low_mask);
   
-  if ((high_mask_bits | low_mask_bits) == 0) {
+  if ((high_mask_bits ==0) && (low_mask_bits == 0)) [[likely]] {
     return;
   }
   
@@ -166,14 +166,7 @@ double horizontal_product(__m256d v, int64_t& exponent) {
   __m256d one = _mm256_set1_pd(1);
   __m256d vhigh = _mm256_permute2f128_pd(v, one, 0b0100000);
   __m256d vlow  = _mm256_permute2f128_pd(v, one, 0b0100001);
-  /*
-  cout << "vhigh=";
-  debug(vhigh);
-  cout << "vlog=";
-  debug(vlow);
-   */
   __m256d x = save_mul(vlow, vhigh, exponent);
- // debug(x);
   
   __m128d prod1 = _mm256_castpd256_pd128(x);
   
@@ -210,8 +203,8 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   int64_t skipj = k & (-ELEMENTS_PER_LOOP);
   
   // prod of u-x[j] for all j!=k
-  for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) {
-    if (j == skipj) {
+  for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
+    if (j == skipj) [[unlikely]] {
       continue;
     }
    
@@ -251,12 +244,7 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   __m256d prodY = save_mul(save_mul(prod5, prod6, exponent), save_mul(prod7, prod8, exponent), exponent); 
   __m256d prod = save_mul(prodX, prodY, exponent);
   
-  debug(prod);
-  cout << "before " << exponent << endl;
-  
   prod_ref = abs(horizontal_product(prod, exponent));
-  
-  cout << " = " << prod_ref << " / " << exponent << endl;
   
   for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
     if (j == k) {
@@ -268,7 +256,7 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
 
   exponent_ref = exponent;
   
-  cout << "prod=" << prod_ref << ", exponent=" << exponent_ref << endl;  
+//  cout << "prod=" << prod_ref << ", exponent=" << exponent_ref << endl;  
 } 
 
 void prod_realcomplex(const long int N, const double u, const double * x, const double * y, double &prod, long int &exponent) {
