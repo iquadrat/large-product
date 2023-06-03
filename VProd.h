@@ -76,24 +76,20 @@ inline void checkoverflow(__m256d &prod, __m256d& exponent) {
   
   __m256d abs_prod = abs(prod);
   
-  __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
-  __m256d inc = _mm256_and_pd(high_mask, convert_mask);
-  exponent = _mm256_add_pd(exponent, inc);
-  abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);  
+  __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);  
+  if (!_mm256_testz_pd(high_mask, high_mask)) [[unlikely]] {
+    __m256d inc = _mm256_and_pd(high_mask, convert_mask);
+    exponent = _mm256_add_pd(exponent, inc);
+    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);  
+  }
 
     
-  __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);  
-  __m256d dec = _mm256_and_pd(low_mask, convert_mask);  
-  exponent = _mm256_sub_pd(exponent, dec);
-  abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
-
-  
-  if (true) {
+  __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);
+  if (!_mm256_testz_pd(low_mask, low_mask)) [[unlikely]] {
+    __m256d dec = _mm256_and_pd(low_mask, convert_mask);  
+    exponent = _mm256_sub_pd(exponent, dec);
+    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
   }
-  
-  if (true) {
-  }
-  
   
   prod = abs_prod;
 }
