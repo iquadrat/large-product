@@ -194,7 +194,7 @@ class VProd {
     __m256d prod4;
     
     int64_t exponent;
-    
+   /* 
     void check_overflow_single(__m256d& prod) {
       const __m256d toohigh = _mm256_set1_pd(pow(2, exponent_low_high));
       const __m256d toolow  = _mm256_set1_pd(pow(2,-exponent_low_high));
@@ -216,7 +216,7 @@ class VProd {
         prod = _mm256_blendv_pd(prod, _mm256_mul_pd(prod, toohigh), low_mask);
       }  
     }
-    
+    */
   public:
     VProd(double fraction = 1.0, int64_t exponent_ = 0): 
       prod1(_mm256_set_pd(1, 1, 1, fraction)),
@@ -235,10 +235,10 @@ class VProd {
     }
     
     void check_overflow() {
-      check_overflow_single(prod1);
-      check_overflow_single(prod2);
-      check_overflow_single(prod3);
-      check_overflow_single(prod4);
+      ::checkoverflow(prod1, exponent);
+      ::checkoverflow(prod2, exponent);
+      ::checkoverflow(prod3, exponent);
+      ::checkoverflow(prod4, exponent);
     }
     
     void mul(const VProd& other) {
