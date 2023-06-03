@@ -20,6 +20,10 @@ void debug(__m256d v) {
   print(v);
 }
 
+double* new_double_array(int64_t size) {
+  return static_cast<double*>(_mm_malloc(sizeof(double) * size, 32));
+}
+
 
 constexpr long int exponent_low_high=511;
 
@@ -52,14 +56,17 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   int high_mask_bits = _mm256_movemask_pd(high_mask);
   int low_mask_bits  = _mm256_movemask_pd(low_mask);
   
-  if ((high_mask_bits ==0) && (low_mask_bits == 0)) [[likely]] {
-    return;
+  if (high_mask_bits) {
+    exponent += _mm_popcnt_u32(high_mask_bits);
+    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);  
   }
   
-  exponent += _mm_popcnt_u32(high_mask_bits) - _mm_popcnt_u32(low_mask_bits);
+  if (low_mask_bits) {
+    exponent -= _mm_popcnt_u32(low_mask_bits);
+    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
+  }
   
-  abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);
-  prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
+  prod = abs_prod;
 }
 
 __m256d mul_diff(__m256d prod, __m256d u, __m256d x) {

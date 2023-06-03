@@ -16,6 +16,8 @@ g++ -std=c++11 -O3 -funroll-loops -march=native -lm -o test_simple_problem2 test
 #include <ctime>
 #include <unistd.h>
 #include <gnu/libc-version.h>
+#include <cassert>
+#include <mm_malloc.h>
 #include "VProd.h"
 
 using namespace std;
@@ -104,24 +106,63 @@ class stopwatch {
 // There should not be more than 32 (better 16) multiplication between factors without balancing the exponent OR not more than 16 (8) multiplication when only checking against a overflowing exponent
 // N=1000..100000
 
-void prod_realreal(const long int N, const long int k, const double u, const double u0, const double * x, double &prod, long int &exponent, double &prod0, long int &exponent0) { 
+void prod_realreal(const long int N, const long int k, const double u1, const double u2, const double * x, double &prod1_ref, long int &exponent1_ref, double &prod2_ref, long int &exponent2_ref) { 
+  const int64_t ELEMENTS_PER_LOOP = 4 * 4;
+  assert(N % ELEMENTS_PER_LOOP == 0);
+  assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
-// prod of u-x[j] for all j!=k
-  for (int j=0; j<k; j++) { 
-//      prod*=u-x[j];
-    prod*=abs(u-x[j]);
-    prod0*=abs(u0-x[j]);
-    checkoverflow(prod,exponent); 
-    checkoverflow(prod0,exponent0);
+  VProd prod1(prod1_ref, exponent1_ref);
+  VProd prod2(prod2_ref, exponent2_ref);
+  
+  __m256d u1_vec = _mm256_set1_pd(u1);
+  __m256d u2_vec = _mm256_set1_pd(u2);
+  
+  int64_t skipj = k & (-ELEMENTS_PER_LOOP);
+  
+  // prod of u-x[j] for all j!=k
+  for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
+    if (j != skipj) [[likely]] {
+      prod1.mul_no_overflow(
+        _mm256_sub_pd(u1_vec, _mm256_load_pd(&x[j +  0])),
+        _mm256_sub_pd(u1_vec, _mm256_load_pd(&x[j +  4])),
+        _mm256_sub_pd(u1_vec, _mm256_load_pd(&x[j +  8])),
+        _mm256_sub_pd(u1_vec, _mm256_load_pd(&x[j + 12]))
+      );
+      prod2.mul_no_overflow(
+        _mm256_sub_pd(u2_vec, _mm256_load_pd(&x[j +  0])),
+        _mm256_sub_pd(u2_vec, _mm256_load_pd(&x[j +  4])),
+        _mm256_sub_pd(u2_vec, _mm256_load_pd(&x[j +  8])),
+        _mm256_sub_pd(u2_vec, _mm256_load_pd(&x[j + 12]))
+      );
+    }
+   
+    if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
+      prod1.check_overflow();
+      prod2.check_overflow();
+    }
   }
-  for (int j=k+1; j<N; j++) {
-//    prod*=u-x[j];
-    prod*=abs(u-x[j]);
-    prod0*=abs(u0-x[j]);
-    checkoverflow(prod,exponent);
-    checkoverflow(prod0,exponent0);
+
+  prod1.check_overflow();
+  prod2.check_overflow();
+    
+  auto prod = prod1.get();
+  prod1_ref = abs(prod.fraction);
+  exponent1_ref = prod.exponent;
+  
+  prod = prod2.get();
+  prod2_ref = abs(prod.fraction);
+  exponent2_ref = prod.exponent;
+  
+  for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
+    if (j == k) {
+      continue;
+    } 
+    prod1_ref *= abs(u1 - x[j]);
+    prod2_ref *= abs(u2 - x[j]);
+    checkoverflow(prod1_ref, exponent1_ref); 
+    checkoverflow(prod2_ref, exponent2_ref);
   }
-  return;
+
 } 
 
 void prod_realcomplex(const long int N, const double u, const double u0, const double * x, const double * y, double &prod, long int &exponent, double &prod0, long int &exponent0) {
@@ -180,7 +221,7 @@ void test_realreal() {
   
   {
     constexpr int64_t N = 16000;
-    double* x = new double[N];
+    double* x = new_double_array(N);
     gen = std::mt19937_64(42);
     init_random_positions(N,-1,1,x);
     
@@ -201,7 +242,8 @@ void test_realreal() {
     assert_eq(101L, exponent1);
     assert_approx(2.11219e-81, prod2);
     assert_eq(-45L, exponent2);
-      
+   
+    delete(x);   
   }
 
 }
@@ -227,10 +269,8 @@ int main(int argc, char *argv[]) {
   long int M = atoi(argv[1]);
   long int N = atoi(argv[2]);
 
-  double * x;
-  double * y;
-  x=new double[N];
-  y=new double[N];
+  double * x = new_double_array(N);
+  double * y = new_double_array(N);
 
   init_random_positions(N,-1,1,x);
   init_random_positions(N,-1,1,y);

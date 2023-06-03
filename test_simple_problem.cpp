@@ -109,7 +109,7 @@ class stopwatch {
 void prod_realreal(const long int N, const long int k, const double u, const double * x, double &prod_ref, long int &exponent_ref) {
   const int64_t ELEMENTS_PER_LOOP = 8 * 4;
   assert(N % ELEMENTS_PER_LOOP == 0);
-  assert(reinterpret_cast<uintptr_t>(x) % 8 == 0);
+  assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
   VProd prod1(prod_ref, exponent_ref);
   VProd prod2;
@@ -209,7 +209,7 @@ void test_realreal() {
   
   {
     constexpr int64_t N = 16000;
-    double* x = new double[N];
+    double* x = new_double_array(N);
     gen = std::mt19937_64(42);
     init_random_positions(N,-1,1,x);
     double prod = 7.1;
@@ -251,10 +251,8 @@ int main(int argc, char *argv[]) {
   long int M = atoi(argv[1]);
   long int N = atoi(argv[2]);
 
-  double * x;
-  double * y;
-  x=new double[N];
-  y=new double[N];
+  double * x = new_double_array(N);
+  double * y = new_double_array(N);
 
   init_random_positions(N,-1,1,x);
   init_random_positions(N,-1,1,y);
