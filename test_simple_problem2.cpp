@@ -196,26 +196,81 @@ void prod_complexreal(const long int N, const double u, const double u0, const d
 
 
 
-void prod_complexcomplex(const long int N, const long int k, const double u, const double u0, const double v, const double v0, const double * x, const double * y, double &prod, long int &exponent, double &prod0, long int &exponent0) {
+void prod_complexcomplex(const long int N, const long int k, const double u, const double u0, const double v, const double v0, const double * x, const double * y, double &prod1_ref, long int &exponent1_ref, double &prod2_ref, long int &exponent2_ref) {
+/*
+  const int64_t ELEMENTS_PER_LOOP = 4 * 4;
+  assert(N % ELEMENTS_PER_LOOP == 0);
+  assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
+  VProd prod1(prod1_ref, exponent1_ref);
+  VProd prod2(prod2_ref, exponent2_ref);
+  
+  __m256d u1_vec = _mm256_set1_pd(u1);
+  __m256d u2_vec = _mm256_set1_pd(u2);
+  
+  int64_t skipj = k & (-ELEMENTS_PER_LOOP);
+  
+  // prod of u-x[j] for all j!=k
+  for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
+    if (j != skipj) [[likely]] {
+      const __m256d x0 = _mm256_load_pd(&x[j +  0]);
+      const __m256d x1 = _mm256_load_pd(&x[j +  4]);
+      const __m256d x2 = _mm256_load_pd(&x[j +  8]);
+      const __m256d x3 = _mm256_load_pd(&x[j + 12]);
+      prod1.mul_no_overflow(
+        _mm256_sub_pd(u1_vec, x0),
+        _mm256_sub_pd(u1_vec, x1),
+        _mm256_sub_pd(u1_vec, x2),
+        _mm256_sub_pd(u1_vec, x3)
+      );
+      prod2.mul_no_overflow(
+        _mm256_sub_pd(u2_vec, x0),
+        _mm256_sub_pd(u2_vec, x1),
+        _mm256_sub_pd(u2_vec, x2),
+        _mm256_sub_pd(u2_vec, x3)
+      );
+    }
+   
+    if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
+      prod1.check_overflow();
+      prod2.check_overflow();
+    }
+  }
 
+  prod1.check_overflow();
+  prod2.check_overflow();
+    
+  auto prod = prod1.get();
+  prod1_ref = abs(prod.fraction);
+  exponent1_ref = prod.exponent;
+  
+  prod = prod2.get();
+  prod2_ref = abs(prod.fraction);
+  exponent2_ref = prod.exponent;
+  
+  for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
+    if (j == k) {
+      continue;
+    } 
+    prod1_ref *= abs(u1 - x[j]);
+    prod2_ref *= abs(u2 - x[j]);
+    checkoverflow(prod1_ref, exponent1_ref); 
+    checkoverflow(prod2_ref, exponent2_ref);
+  }
+*/
 
 
   // prod over all j!=k
-  for (int j=0; j<k; j++) {
-    prod*=sqr(u-x[j])+sqr(v-y[j]);
-    prod0*=sqr(u0-x[j])+sqr(v0-y[j]);
-    checkoverflow(prod,exponent);
-    checkoverflow(prod0,exponent0);
+  for (int j=0; j<N; j++) { 
+    if (j == k) {
+      continue;
+    } 
+    prod1_ref *= sqr(u-x[j])+sqr(v-y[j]);
+    prod2_ref *= sqr(u0-x[j])+sqr(v0-y[j]);
+    checkoverflow(prod1_ref, exponent1_ref); 
+    checkoverflow(prod2_ref, exponent2_ref);
   }
-  for (int j=k+1; j<N; j++) {
-    prod*=sqr(u-x[j])+sqr(v-y[j]);
-    prod0*=sqr(u0-x[j])+sqr(v0-y[j]);
-    checkoverflow(prod,exponent);
-    checkoverflow(prod0,exponent0);
-  }
-  return;
-}
+ }
 
 
 
