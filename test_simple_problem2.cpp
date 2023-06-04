@@ -194,10 +194,20 @@ void prod_complexreal(const long int N, const double u, const double u0, const d
   return;
 }
 
+__m256d sqr(__m256d v) {
+  return _mm256_mul_pd(v,v);
+}
+
+__m256d sqr_diff(__m256d x, __m256d y, __m256d u, __m256d v) {
+   return _mm256_add_pd(
+       sqr(_mm256_sub_pd(u, x)),
+       sqr(_mm256_sub_pd(v, y))
+     );
+}
 
 
-void prod_complexcomplex(const long int N, const long int k, const double u, const double u0, const double v, const double v0, const double * x, const double * y, double &prod1_ref, long int &exponent1_ref, double &prod2_ref, long int &exponent2_ref) {
-/*
+void prod_complexcomplex(const long int N, const long int k, const double u1, const double u2, const double v1, const double v2, const double * x, const double * y, double &prod1_ref, long int &exponent1_ref, double &prod2_ref, long int &exponent2_ref) {
+
   const int64_t ELEMENTS_PER_LOOP = 4 * 4;
   assert(N % ELEMENTS_PER_LOOP == 0);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
@@ -207,7 +217,9 @@ void prod_complexcomplex(const long int N, const long int k, const double u, con
   
   __m256d u1_vec = _mm256_set1_pd(u1);
   __m256d u2_vec = _mm256_set1_pd(u2);
-  
+  __m256d v1_vec = _mm256_set1_pd(v1);
+  __m256d v2_vec = _mm256_set1_pd(v2);
+
   int64_t skipj = k & (-ELEMENTS_PER_LOOP);
   
   // prod of u-x[j] for all j!=k
@@ -217,17 +229,23 @@ void prod_complexcomplex(const long int N, const long int k, const double u, con
       const __m256d x1 = _mm256_load_pd(&x[j +  4]);
       const __m256d x2 = _mm256_load_pd(&x[j +  8]);
       const __m256d x3 = _mm256_load_pd(&x[j + 12]);
+      
+      const __m256d y0 = _mm256_load_pd(&y[j +  0]);
+      const __m256d y1 = _mm256_load_pd(&y[j +  4]);
+      const __m256d y2 = _mm256_load_pd(&y[j +  8]);
+      const __m256d y3 = _mm256_load_pd(&y[j + 12]);
+
       prod1.mul_no_overflow(
-        _mm256_sub_pd(u1_vec, x0),
-        _mm256_sub_pd(u1_vec, x1),
-        _mm256_sub_pd(u1_vec, x2),
-        _mm256_sub_pd(u1_vec, x3)
+        sqr_diff(x0, y0, u1_vec, v1_vec),
+        sqr_diff(x1, y1, u1_vec, v1_vec),
+        sqr_diff(x2, y2, u1_vec, v1_vec),
+        sqr_diff(x3, y3, u1_vec, v1_vec)
       );
       prod2.mul_no_overflow(
-        _mm256_sub_pd(u2_vec, x0),
-        _mm256_sub_pd(u2_vec, x1),
-        _mm256_sub_pd(u2_vec, x2),
-        _mm256_sub_pd(u2_vec, x3)
+        sqr_diff(x0, y0, u2_vec, v2_vec),
+        sqr_diff(x1, y1, u2_vec, v2_vec),
+        sqr_diff(x2, y2, u2_vec, v2_vec),
+        sqr_diff(x3, y3, u2_vec, v2_vec)
       );
     }
    
@@ -247,26 +265,13 @@ void prod_complexcomplex(const long int N, const long int k, const double u, con
   prod = prod2.get();
   prod2_ref = abs(prod.fraction);
   exponent2_ref = prod.exponent;
-  
+
   for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
     if (j == k) {
       continue;
     } 
-    prod1_ref *= abs(u1 - x[j]);
-    prod2_ref *= abs(u2 - x[j]);
-    checkoverflow(prod1_ref, exponent1_ref); 
-    checkoverflow(prod2_ref, exponent2_ref);
-  }
-*/
-
-
-  // prod over all j!=k
-  for (int j=0; j<N; j++) { 
-    if (j == k) {
-      continue;
-    } 
-    prod1_ref *= sqr(u-x[j])+sqr(v-y[j]);
-    prod2_ref *= sqr(u0-x[j])+sqr(v0-y[j]);
+    prod1_ref *= sqr(u1-x[j])+sqr(v1-y[j]);
+    prod2_ref *= sqr(u2-x[j])+sqr(v2-y[j]);
     checkoverflow(prod1_ref, exponent1_ref); 
     checkoverflow(prod2_ref, exponent2_ref);
   }
