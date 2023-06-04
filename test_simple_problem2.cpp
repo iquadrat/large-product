@@ -122,10 +122,10 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
   // prod of u-x[j] for all j!=k
   for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
     if (j != skipj) [[likely]] {
-      register __m256d x0 = _mm256_load_pd(&x[j +  0]);
-      register __m256d x1 = _mm256_load_pd(&x[j +  4]);
-      register __m256d x2 = _mm256_load_pd(&x[j +  8]);
-      register __m256d x3 = _mm256_load_pd(&x[j + 12]);
+      const __m256d x0 = _mm256_load_pd(&x[j +  0]);
+      const __m256d x1 = _mm256_load_pd(&x[j +  4]);
+      const __m256d x2 = _mm256_load_pd(&x[j +  8]);
+      const __m256d x3 = _mm256_load_pd(&x[j + 12]);
       prod1.mul_no_overflow(
         _mm256_sub_pd(u1_vec, x0),
         _mm256_sub_pd(u1_vec, x1),
@@ -252,10 +252,37 @@ void test_realreal() {
 
 }
 
+void test_complexcomplex() {
+
+ {
+    constexpr int64_t N = 16000;
+    double* x = new_double_array(N);
+    double* y = new_double_array(N);
+    gen = std::mt19937_64(42);
+    init_random_positions(N,-1,1,x);
+    init_random_positions(N,-1,1,y);
+    
+    double prod1 = 7.1;
+    int64_t exponent1 = 42;
+    double prod2 = 0.02;
+    int64_t exponent2 = -2;
+    
+    prod_complexreal(N, 1.4334, 0.1233, -2.13, 0.111, x, prod1,exponent1,prod2,exponent2);    
+    assert_approx(5.00849e+16, prod1);
+    assert_eq(128L, exponent1);
+    assert_approx(9.07222e-26, prod2);
+    assert_eq(-77L, exponent2);
+   
+    delete(x);   
+  }
+
+}
+
 
 void test_all() {
   test_vprod();
   test_realreal();
+  test_complexcomplex();
 }
 
 
@@ -293,8 +320,8 @@ int main(int argc, char *argv[]) {
   }
   timing.stop();
   cout << "prod_realreal: prod=" << prod/prod0 << " exponent=" << exponent-exponent0 << " timing=" << timing.get_time() << " seconds\n";
+
   timing.reset();
-  
   prod=1;
   exponent=0;
   timing.start();
