@@ -198,7 +198,10 @@ void prod_complexreal(const long int N, const double u, const double u0, const d
 
 void prod_complexcomplex(const long int N, const long int k, const double u, const double u0, const double v, const double v0, const double * x, const double * y, double &prod, long int &exponent, double &prod0, long int &exponent0) {
 
-// prod over all j!=k
+
+
+
+  // prod over all j!=k
   for (int j=0; j<k; j++) {
     prod*=sqr(u-x[j])+sqr(v-y[j]);
     prod0*=sqr(u0-x[j])+sqr(v0-y[j]);
@@ -267,11 +270,12 @@ void test_complexcomplex() {
     double prod2 = 0.02;
     int64_t exponent2 = -2;
     
-    prod_complexreal(N, 1.4334, 0.1233, -2.13, 0.111, x, prod1,exponent1,prod2,exponent2);    
-    assert_approx(5.00849e+16, prod1);
-    assert_eq(128L, exponent1);
-    assert_approx(9.07222e-26, prod2);
-    assert_eq(-77L, exponent2);
+    prod_complexcomplex(N, 2122, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, exponent1, prod2, exponent2);
+
+    assert_approx(161.905, prod1);
+    assert_eq(127L, exponent1);
+    assert_approx(6.29374e-112, prod2);
+    assert_eq(-34L, exponent2);
    
     delete(x);   
   }
