@@ -261,6 +261,7 @@ int main(int argc, char *argv[]) {
   long int exponent=0;
   stopwatch timing;
   
+  while(true) {
   timing.start();
   for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
     double u=distu(gen)*2-1;
@@ -269,6 +270,7 @@ int main(int argc, char *argv[]) {
   timing.stop();
   cout << "prod_realreal: prod=" << prod << " exponent=" << exponent << " timing=" << timing.get_time() << " seconds\n";
   timing.reset();
+  }
  
   prod=1;
   exponent=0;

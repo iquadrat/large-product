@@ -122,10 +122,10 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
   // prod of u-x[j] for all j!=k
   for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
     if (j != skipj) [[likely]] {
-      register __m256d x0 = _mm256_load_pd(&x[j +  0]);
-      register __m256d x1 = _mm256_load_pd(&x[j +  4]);
-      register __m256d x2 = _mm256_load_pd(&x[j +  8]);
-      register __m256d x3 = _mm256_load_pd(&x[j + 12]);
+      const __m256d x0 = _mm256_load_pd(&x[j +  0]);
+      const __m256d x1 = _mm256_load_pd(&x[j +  4]);
+      const __m256d x2 = _mm256_load_pd(&x[j +  8]);
+      const __m256d x3 = _mm256_load_pd(&x[j + 12]);
       prod1.mul_no_overflow(
         _mm256_sub_pd(u1_vec, x0),
         _mm256_sub_pd(u1_vec, x1),
@@ -194,25 +194,88 @@ void prod_complexreal(const long int N, const double u, const double u0, const d
   return;
 }
 
-
-
-void prod_complexcomplex(const long int N, const long int k, const double u, const double u0, const double v, const double v0, const double * x, const double * y, double &prod, long int &exponent, double &prod0, long int &exponent0) {
-
-// prod over all j!=k
-  for (int j=0; j<k; j++) {
-    prod*=sqr(u-x[j])+sqr(v-y[j]);
-    prod0*=sqr(u0-x[j])+sqr(v0-y[j]);
-    checkoverflow(prod,exponent);
-    checkoverflow(prod0,exponent0);
-  }
-  for (int j=k+1; j<N; j++) {
-    prod*=sqr(u-x[j])+sqr(v-y[j]);
-    prod0*=sqr(u0-x[j])+sqr(v0-y[j]);
-    checkoverflow(prod,exponent);
-    checkoverflow(prod0,exponent0);
-  }
-  return;
+__m256d sqr(__m256d v) {
+  return _mm256_mul_pd(v,v);
 }
+
+__m256d sqr_diff(__m256d x, __m256d y, __m256d u, __m256d v) {
+   return _mm256_add_pd(
+       sqr(_mm256_sub_pd(u, x)),
+       sqr(_mm256_sub_pd(v, y))
+     );
+}
+
+
+void prod_complexcomplex(const long int N, const long int k, const double u1, const double u2, const double v1, const double v2, const double * x, const double * y, double &prod1_ref, long int &exponent1_ref, double &prod2_ref, long int &exponent2_ref) {
+
+  const int64_t ELEMENTS_PER_LOOP = 4 * 4;
+  assert(N % ELEMENTS_PER_LOOP == 0);
+  assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
+
+  VProd prod1(prod1_ref, exponent1_ref);
+  VProd prod2(prod2_ref, exponent2_ref);
+  
+  __m256d u1_vec = _mm256_set1_pd(u1);
+  __m256d u2_vec = _mm256_set1_pd(u2);
+  __m256d v1_vec = _mm256_set1_pd(v1);
+  __m256d v2_vec = _mm256_set1_pd(v2);
+
+  int64_t skipj = k & (-ELEMENTS_PER_LOOP);
+  
+  // prod of u-x[j] for all j!=k
+  for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
+    if (j != skipj) [[likely]] {
+      const __m256d x0 = _mm256_load_pd(&x[j +  0]);
+      const __m256d x1 = _mm256_load_pd(&x[j +  4]);
+      const __m256d x2 = _mm256_load_pd(&x[j +  8]);
+      const __m256d x3 = _mm256_load_pd(&x[j + 12]);
+      
+      const __m256d y0 = _mm256_load_pd(&y[j +  0]);
+      const __m256d y1 = _mm256_load_pd(&y[j +  4]);
+      const __m256d y2 = _mm256_load_pd(&y[j +  8]);
+      const __m256d y3 = _mm256_load_pd(&y[j + 12]);
+
+      prod1.mul_no_overflow(
+        sqr_diff(x0, y0, u1_vec, v1_vec),
+        sqr_diff(x1, y1, u1_vec, v1_vec),
+        sqr_diff(x2, y2, u1_vec, v1_vec),
+        sqr_diff(x3, y3, u1_vec, v1_vec)
+      );
+      prod2.mul_no_overflow(
+        sqr_diff(x0, y0, u2_vec, v2_vec),
+        sqr_diff(x1, y1, u2_vec, v2_vec),
+        sqr_diff(x2, y2, u2_vec, v2_vec),
+        sqr_diff(x3, y3, u2_vec, v2_vec)
+      );
+    }
+   
+    if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
+      prod1.check_overflow();
+      prod2.check_overflow();
+    }
+  }
+
+  prod1.check_overflow();
+  prod2.check_overflow();
+    
+  auto prod = prod1.get();
+  prod1_ref = abs(prod.fraction);
+  exponent1_ref = prod.exponent;
+  
+  prod = prod2.get();
+  prod2_ref = abs(prod.fraction);
+  exponent2_ref = prod.exponent;
+
+  for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
+    if (j == k) {
+      continue;
+    } 
+    prod1_ref *= sqr(u1-x[j])+sqr(v1-y[j]);
+    prod2_ref *= sqr(u2-x[j])+sqr(v2-y[j]);
+    checkoverflow(prod1_ref, exponent1_ref); 
+    checkoverflow(prod2_ref, exponent2_ref);
+  }
+ }
 
 
 
@@ -252,10 +315,38 @@ void test_realreal() {
 
 }
 
+void test_complexcomplex() {
+
+ {
+    constexpr int64_t N = 16000;
+    double* x = new_double_array(N);
+    double* y = new_double_array(N);
+    gen = std::mt19937_64(42);
+    init_random_positions(N,-1,1,x);
+    init_random_positions(N,-1,1,y);
+    
+    double prod1 = 7.1;
+    int64_t exponent1 = 42;
+    double prod2 = 0.02;
+    int64_t exponent2 = -2;
+    
+    prod_complexcomplex(N, 2122, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, exponent1, prod2, exponent2);
+
+    assert_approx(161.905, prod1);
+    assert_eq(127L, exponent1);
+    assert_approx(6.29374e-112, prod2);
+    assert_eq(-34L, exponent2);
+   
+    delete(x);   
+  }
+
+}
+
 
 void test_all() {
   test_vprod();
   test_realreal();
+  test_complexcomplex();
 }
 
 
@@ -293,8 +384,8 @@ int main(int argc, char *argv[]) {
   }
   timing.stop();
   cout << "prod_realreal: prod=" << prod/prod0 << " exponent=" << exponent-exponent0 << " timing=" << timing.get_time() << " seconds\n";
+
   timing.reset();
-  
   prod=1;
   exponent=0;
   timing.start();

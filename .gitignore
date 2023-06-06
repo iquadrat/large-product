@@ -3,3 +3,4 @@ test_simple_problem2
 *.s
 a.out
 *~
+callgrind.out.*
