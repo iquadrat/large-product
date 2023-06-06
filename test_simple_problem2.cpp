@@ -140,7 +140,7 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
       );
     }
    
-    if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
+    if ((j / ELEMENTS_PER_LOOP) % 16 == 0)  { 
       prod1.check_overflow();
       prod2.check_overflow();
     }
@@ -249,7 +249,7 @@ void prod_complexcomplex(const long int N, const long int k, const double u1, co
       );
     }
    
-    if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
+    if ((j / ELEMENTS_PER_LOOP) % 16 == 0) { 
       prod1.check_overflow();
       prod2.check_overflow();
     }

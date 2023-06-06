@@ -39,17 +39,17 @@ __m256i extract_exponents(__m256d v) {
   __m256i vi = _mm256_castpd_si256(v);
   __m256i x = _mm256_srli_epi64(vi, 52);
   __m256i z = _mm256_and_si256(x, _mm256_set1_epi64x(0x7ff));
-  __m256i y = _mm256_sub_epi64(z, _mm256_set1_epi64x(1023));
-  return y;
+ // __m256i y = _mm256_sub_epi64(z, _mm256_set1_epi64x(1023));
+  return z;
 }
 
 __m256d clear_exponent_and_sign(__m256d v) {
   // clear first two bits (sign and highest mantisse)
   // set mantisse to 0x3ff
-  const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(   0xc000000000000000ULL));
-  const __m256d or_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
-  auto x = _mm256_andnot_pd(mask, v);
-  return _mm256_or_pd(x, or_mask);
+  //const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(   0xc000000000000000ULL));
+  //const __m256d or_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
+  auto x = _mm256_andnot_pd(_mm256_castsi256_pd(_mm256_set1_epi64x(   0xc000000000000000ULL)), v);
+  return _mm256_or_pd(x, _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL)));
 }
 
 
