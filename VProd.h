@@ -21,9 +21,12 @@ void debug(__m256d v) {
 }
 
 void print(__m256i v) {
-  int64_t x[4];
-  _mm256_store_si256(reinterpret_cast<__m256i*>(x), v);
-  cout << hex << x[0] << "," << x[1] << "," << x[2] << "," << x[3] << endl;
+  union {
+    __m256i v;
+     int64_t a[4];
+  } x;
+  _mm256_store_si256(&x.v, v);
+  cout << x.a[0] << "," << x.a[1] << "," << x.a[2] << "," << x.a[3] << endl;
 
 }
 
@@ -93,7 +96,12 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   prod = abs_prod;
 }
 
-inline void checkoverflow(__m256d &prod, __m256d& exponent) {
+inline void checkoverflow(__m256d &prod, __m256i& exponents) {
+  __m256i new_exponents = extract_exponents(prod);
+  prod = clear_exponent_and_sign(prod);
+  exponents = _mm256_add_epi64(exponents, new_exponents);
+  
+/*
   const __m256d toohigh = _mm256_set1_pd(pow(2,exponent_low_high));
   double p = pow(2,-exponent_low_high);
   const __m256d toolow  = _mm256_set1_pd(p);
@@ -117,6 +125,7 @@ inline void checkoverflow(__m256d &prod, __m256d& exponent) {
   }
   
   prod = abs_prod;
+*/
 }
 
 __m256d mul_diff(__m256d prod, __m256d u, __m256d x) {
@@ -129,9 +138,9 @@ __m256d save_mul(__m256d prod1, __m256d prod2, int64_t& exponent) {
   return prod; 
 }
 
-__m256d save_mul(__m256d prod1, __m256d prod2, __m256d& exponent) {
+__m256d save_mul(__m256d prod1, __m256d prod2, __m256i& exponents) {
   __m256d prod = _mm256_mul_pd(prod1, prod2);
-  checkoverflow(prod, exponent);
+  checkoverflow(prod, exponents);
   return prod; 
 }
 
@@ -147,6 +156,12 @@ double horizontal_product(__m256d v, int64_t& exponent) {
   double result = abs(_mm_cvtsd_f64(_mm_mul_sd(prod1, high64)));  // reduce to scalar
   checkoverflow(result, exponent);
   return result;
+}
+
+int64_t horizontal_sum(__m256i v) {
+  __m256i hi = _mm256_unpackhi_epi64(v, v);
+  __m256i sumlohi = _mm256_add_epi64(v, hi);
+  return _mm256_extract_epi64(sumlohi, 0) + _mm256_extract_epi64(sumlohi, 2);
 }
 
 
@@ -168,7 +183,7 @@ class VProd {
     __m256d prod3;
     __m256d prod4;
     
-    __m256d exponent;
+    __m256i exponent;
  
   public:  
     VProd(double fraction = 1.0, int64_t exponent_ = 0): 
@@ -176,7 +191,7 @@ class VProd {
       prod2(_MM256_ONE),
       prod3(_MM256_ONE),
       prod4(_MM256_ONE),
-      exponent(_mm256_set_pd(0, 0, 0, exponent_))
+      exponent(_mm256_set_epi64x(0, 0, 0, exponent_))
     {
     }
 
@@ -205,10 +220,7 @@ class VProd {
     LargeExponentValue get() const {
       LargeExponentValue result;
     
-      __m128i ints = _mm256_cvtpd_epi32(exponent);
-      ints = _mm_hadd_epi32(ints, ints);
-      ints = _mm_hadd_epi32(ints, ints);
-      result.exponent = _mm_extract_epi32(ints, 0);
+      result.exponent = horizontal_sum(exponent);
     
       __m256d prod12 = save_mul(prod1, prod2, result.exponent);
       __m256d prod34 = save_mul(prod3, prod4, result.exponent);
@@ -250,6 +262,11 @@ void assert_approx(double a, double b) {
 
 
 inline void test_vprod() {
+  {
+    assert_eq(horizontal_sum(_mm256_set_epi64x(1,3,7,11)), 22L);
+    assert_eq(horizontal_sum(_mm256_set_epi64x(10000, -3000, 70, 5500)), 12570L);
+  }
+
   {
     __m256i exp = extract_exponents(_mm256_set_pd(2, 1e20, 1e-20, -5e189));
     assert_eq(1LL, _mm256_extract_epi64(exp, 3));
