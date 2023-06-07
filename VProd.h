@@ -37,19 +37,31 @@ double* new_double_array(int64_t size) {
 
 __m256i extract_exponents(__m256d v) {
   __m256i vi = _mm256_castpd_si256(v);
-  __m256i x = _mm256_srli_epi64(vi, 52);
-  __m256i z = _mm256_and_si256(x, _mm256_set1_epi64x(0x7ff));
+  __m256i z = _mm256_and_si256(vi, _mm256_set1_epi64x(0x7ff0000000000000ULL));
+  __m256i x = _mm256_srli_epi64(z, 52);
  // __m256i y = _mm256_sub_epi64(z, _mm256_set1_epi64x(1023));
-  return z;
+  return x;
 }
 
 __m256d clear_exponent_and_sign(__m256d v) {
   // clear first two bits (sign and highest mantisse)
   // set mantisse to 0x3ff
-  //const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(   0xc000000000000000ULL));
-  //const __m256d or_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
-  auto x = _mm256_andnot_pd(_mm256_castsi256_pd(_mm256_set1_epi64x(   0xc000000000000000ULL)), v);
-  return _mm256_or_pd(x, _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL)));
+  const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(   0x7ff0000000000000ULL));
+  const __m256d or_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0xb000000000000000ULL));
+  auto x = _mm256_andnot_pd(mask, v);
+  return _mm256_or_pd(x, mask);
+}
+
+__m256i extract_and_clear_mantisse(__m256d& v) {
+  const __m256d mantisse_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(   0x7ff0000000000000ULL));
+  const __m256d mantisse_or_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0xb000000000000000ULL));
+
+  __m256d mantisse_pd = _mm256_and_pd(mantisse_mask, v);
+  __m256d cleared_mantisse = _mm256_andnot_pd(mantisse_mask, v);
+  __m256i mantisse = _mm256_srli_epi64(_mm256_castpd_si256(mantisse_pd), 52);
+  v = _mm256_or_pd(cleared_mantisse, mantisse_or_mask); 
+  
+  return mantisse;
 }
 
 
@@ -97,9 +109,14 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
 }
 
 inline void checkoverflow(__m256d &prod, __m256i& exponents) {
+/*
   __m256i new_exponents = extract_exponents(prod);
   prod = clear_exponent_and_sign(prod);
   exponents = _mm256_add_epi64(exponents, new_exponents);
+  */
+  
+  __m256i mantisse = extract_and_clear_mantisse(prod);
+  exponents = _mm256_add_epi64(exponents, mantisse);
   
 /*
   const __m256d toohigh = _mm256_set1_pd(pow(2,exponent_low_high));
