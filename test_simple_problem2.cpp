@@ -28,7 +28,7 @@ class stopwatch;
 inline double sqr(const double x);
 void init_random_positions(const long int N, const double a, const double b, double * x);
 inline void checkoverflow(double &prod, long int &exponent);
-void prod_realreal(const long int N, const long int k, const double u, const double * x, double &prod, long int &exponent);
+LargeExponentFloat prod_realreal(const long int N, const long int k, const double u, const double * x, LargeExponentFloat prod);
 void prod_realcomplex(const long int N, const double u, const double * x, const 
 double * y, double &prod, long int &exponent);
 void prod_complexreal(const long int N, const double u, const double v, const double * x, double &prod, long int &exponent);
@@ -100,19 +100,20 @@ class stopwatch {
 
 
 
+
 // **************************************************************************
 // Simple code to optimize: 4 variantes. 
 // Most important 1. (prod_realreal) and 4. (prod_complexcomplex), 2. and 3. should be simply modification of 4. 
 // There should not be more than 32 (better 16) multiplication between factors without balancing the exponent OR not more than 16 (8) multiplication when only checking against a overflowing exponent
 // N=1000..100000
 
-void prod_realreal(const long int N, const long int k, const double u1, const double u2, const double * x, double &prod1_ref, long int &exponent1_ref, double &prod2_ref, long int &exponent2_ref) { 
+void prod_realreal(const long int N, const long int k, const double u1, const double u2, const double * x, LargeExponentFloat& prod1, LargeExponentFloat& prod2) { 
   const int64_t ELEMENTS_PER_LOOP = 4 * 4;
   assert(N % ELEMENTS_PER_LOOP == 0);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
-  VProd prod1(prod1_ref, exponent1_ref);
-  VProd prod2(prod2_ref, exponent2_ref);
+  VProd vprod1(prod1.significand, prod1.exponent);
+  VProd vprod2(prod2.significand, prod2.exponent);
   
   __m256d u1_vec = _mm256_set1_pd(u1);
   __m256d u2_vec = _mm256_set1_pd(u2);
@@ -126,13 +127,13 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
       register __m256d x1 = _mm256_load_pd(&x[j +  4]);
       register __m256d x2 = _mm256_load_pd(&x[j +  8]);
       register __m256d x3 = _mm256_load_pd(&x[j + 12]);
-      prod1.mul_no_overflow(
+      vprod1.mul_no_overflow(
         _mm256_sub_pd(u1_vec, x0),
         _mm256_sub_pd(u1_vec, x1),
         _mm256_sub_pd(u1_vec, x2),
         _mm256_sub_pd(u1_vec, x3)
       );
-      prod2.mul_no_overflow(
+      vprod2.mul_no_overflow(
         _mm256_sub_pd(u2_vec, x0),
         _mm256_sub_pd(u2_vec, x1),
         _mm256_sub_pd(u2_vec, x2),
@@ -141,30 +142,31 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
     }
    
     if ((j / ELEMENTS_PER_LOOP) % 8 == 0) { 
-      prod1.check_overflow();
-      prod2.check_overflow();
+      vprod1.check_overflow();
+      vprod2.check_overflow();
     }
   }
 
-  prod1.check_overflow();
-  prod2.check_overflow();
+  vprod1.check_overflow();
+  vprod2.check_overflow();
     
-  auto prod = prod1.get();
-  prod1_ref = abs(prod.fraction);
-  exponent1_ref = prod.exponent;
+  prod1 = vprod1.get();
+  prod2 = vprod2.get();
+  
+  /*
+  double prod1_significand = abs(prod.significand);
+  double prod1_exponent = prod.exponent;
   
   prod = prod2.get();
-  prod2_ref = abs(prod.fraction);
-  exponent2_ref = prod.exponent;
-  
+  double prod2_significand = abs(prod.significand);
+  double prod2_exponent = prod.exponent;
+  */
   for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) { 
     if (j == k) {
       continue;
-    } 
-    prod1_ref *= abs(u1 - x[j]);
-    prod2_ref *= abs(u2 - x[j]);
-    checkoverflow(prod1_ref, exponent1_ref); 
-    checkoverflow(prod2_ref, exponent2_ref);
+    }
+    prod1 = save_mul(prod1, abs(u1 - x[j]));
+    prod2 = save_mul(prod2, abs(u2 - x[j]));  
   }
 
 } 
@@ -229,23 +231,21 @@ void test_realreal() {
     gen = std::mt19937_64(42);
     init_random_positions(N,-1,1,x);
     
-    double prod1 = 7.1;
-    int64_t exponent1 = 42;
-    double prod2 = 0.02;
-    int64_t exponent2 = -2;
+    LargeExponentFloat prod1(7.1, 42 * 511);
+    LargeExponentFloat prod2(0.02, -2 * 511);
     
-    prod_realreal(N, 61, 0.0521, 1.213, x, prod1, exponent1, prod2, exponent2);    
-    assert_approx(9.56257e-99, prod1);
-    assert_eq(-3L, exponent1);
-    assert_approx(5.14096e+09, prod2);
-    assert_eq(0L, exponent2);
+    prod_realreal(N, 61, 0.0521, 1.213, x, prod1, prod2);    
+    assert_approx(9.56257e-99, prod1.significand);
+    assert_eq(-1533L, prod1.exponent);
+    assert_approx(5.14096e+09, prod2.significand);
+    assert_eq(0L, prod2.exponent);
 
     
-    prod_realreal(N, 256, -10.23, 0.021, x, prod1, exponent1, prod2, exponent2);    
-    assert_approx(1.06159e+50, prod1);
-    assert_eq(101L, exponent1);
-    assert_approx(2.11219e-81, prod2);
-    assert_eq(-45L, exponent2);
+    prod_realreal(N, 256, -10.23, 0.021, x, prod1, prod2);    
+    assert_approx(1.06159e+50, prod1.significand);
+    assert_eq(101 * 511L, prod1.exponent);
+    assert_approx(2.11219e-81, prod2.significand);
+    assert_eq(-45 * 511L, prod2.exponent);
    
     delete(x);   
   }
@@ -279,64 +279,60 @@ int main(int argc, char *argv[]) {
   init_random_positions(N,-1,1,x);
   init_random_positions(N,-1,1,y);
   
-  double prod=1;
-  double prod0=1;
-  long int exponent=0;
-  long int exponent0=0;
+  LargeExponentFloat prod(1.0);
+  LargeExponentFloat prod0(1.0);
+
   stopwatch timing;
   
   timing.start();
   for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
     double u=distu(gen)*2-1;
     double u0=distu(gen)*2-1;
-    prod_realreal(N,k,u,u0,x,prod,exponent,prod0,exponent0);
+    prod_realreal(N,k,u,u0,x,prod,prod0);
   }
   timing.stop();
-  cout << "prod_realreal: prod=" << prod/prod0 << " exponent=" << exponent-exponent0 << " timing=" << timing.get_time() << " seconds\n";
+  cout << "prod_realreal: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
   timing.reset();
   
-  prod=1;
-  exponent=0;
+  prod=LargeExponentFloat(1.0);
+  //prod0=LargeExponentFloat(1.0);
+  
   timing.start();
   for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
     double u=distu(gen)*2-1;
     double v=distu(gen)*2-1;
     double u0=distu(gen)*2-1;
     double v0=distu(gen)*2-1;
-    prod_complexcomplex(N,k,u,u0,v,v0,x,y,prod,exponent,prod0,exponent0);
+    prod_complexcomplex(N,k,u,u0,v,v0,x,y,prod.significand,prod.exponent,prod0.significand,prod0.exponent);
   }
   timing.stop();
-  cout << "prod_complexcomplex: prod=" << prod/prod0 << " exponent=" << exponent-exponent0 << " timing=" << timing.get_time() << " seconds\n";
-  
+  cout << "prod_complexcomplex: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
   timing.reset();
-  prod=1;
-  exponent=0;
+
+  prod=LargeExponentFloat(1.0);
+  //prod0=LargeExponentFloat(1.0);
   timing.start();
   for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
     double u=distu(gen)*2-1;
     double u0=distu(gen)*2-1;
-    prod_realcomplex(N,u,u0,x,y,prod,exponent,prod0,exponent0);
+    prod_realcomplex(N,u,u0,x,y,prod.significand,prod.exponent,prod0.significand,prod0.exponent);
   }
   timing.stop();
-  cout << "prod_realcomplex: prod=" << prod/prod0 << " exponent=" << exponent-exponent0 << " timing=" << timing.get_time() << " seconds\n";
-
+  cout << "prod_realcomplex: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
   timing.reset();
-  prod=1;
-  exponent=0;
+  
+  prod=LargeExponentFloat(1.0);
+  //prod0=LargeExponentFloat(1.0);
   timing.start();
   for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
     double u=distu(gen)*2-1;
     double v=distu(gen)*2-1;
     double u0=distu(gen)*2-1;
     double v0=distu(gen)*2-1;
-    prod_complexreal(N,u,v,u0,v0,x,prod,exponent,prod0,exponent0);
+    prod_complexreal(N,u,v,u0,v0,x,prod.significand,prod.exponent,prod0.significand,prod0.exponent);
   }
   timing.stop();
-  cout << "prod_complexreal: prod=" << prod/prod0 << " exponent=" << exponent-exponent0 << " timing=" << timing.get_time() << " seconds\n";
-
-
-
-
+  cout << "prod_complexreal: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
 
   delete[] x;
   delete[] y;
