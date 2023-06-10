@@ -26,42 +26,30 @@ void print(__m256i v) {
      int64_t a[4];
   } x;
   _mm256_store_si256(&x.v, v);
-  cout << x.a[0] << "," << x.a[1] << "," << x.a[2] << "," << x.a[3] << endl;
+  cout << hex << x.a[0] << "," << x.a[1] << "," << x.a[2] << "," << x.a[3] << endl;
 
 }
+
+double extract_double(__m256d v, int index) {
+    double x[4];
+    _mm256_store_pd(x, v);
+    return x[index];
+}
+
 
 double* new_double_array(int64_t size) {
   return static_cast<double*>(_mm_malloc(sizeof(double) * size, 32));
 }
 
+__m256i extract_and_clear_exponent(__m256d& v) {
+    const __m256d exponent_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(      0x7ff0000000000000ULL));
+    const __m256d exponent_reset_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
 
-__m256i extract_exponents(__m256d v) {
-  __m256i vi = _mm256_castpd_si256(v);
-  __m256i z = _mm256_and_si256(vi, _mm256_set1_epi64x(0x7ff0000000000000ULL));
-  __m256i x = _mm256_srli_epi64(z, 52);
- // __m256i y = _mm256_sub_epi64(z, _mm256_set1_epi64x(1023));
-  return x;
-}
-
-__m256d clear_exponent_and_sign(__m256d v) {
-  // clear first two bits (sign and highest mantisse)
-  // set mantisse to 0x3ff
-  const __m256d mask = _mm256_castsi256_pd(_mm256_set1_epi64x(   0x7ff0000000000000ULL));
-  const __m256d or_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0xb000000000000000ULL));
-  auto x = _mm256_andnot_pd(mask, v);
-  return _mm256_or_pd(x, mask);
-}
-
-__m256i extract_and_clear_mantisse(__m256d& v) {
-  const __m256d mantisse_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(   0x7ff0000000000000ULL));
-  const __m256d mantisse_or_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0xb000000000000000ULL));
-
-  __m256d mantisse_pd = _mm256_and_pd(mantisse_mask, v);
-  __m256d cleared_mantisse = _mm256_andnot_pd(mantisse_mask, v);
-  __m256i mantisse = _mm256_srli_epi64(_mm256_castpd_si256(mantisse_pd), 52);
-  v = _mm256_or_pd(cleared_mantisse, mantisse_or_mask); 
-  
-  return mantisse;
+    __m256d exponent_pd = _mm256_and_pd(exponent_mask, v);
+    __m256d cleared_exponent = _mm256_andnot_pd(exponent_mask, v);
+    __m256i exponent = _mm256_srli_epi64(_mm256_castpd_si256(exponent_pd), 52);
+    v = _mm256_or_pd(cleared_exponent, exponent_reset_mask);
+    return exponent;
 }
 
 
@@ -72,10 +60,10 @@ inline void checkoverflow(double &prod, long int &exponent) {
   const double toolow=pow(2,-exponent_low_high);
   if (prod>toohigh) {
     prod*=toolow;
-    exponent++;
+    exponent += 511;
   } else if (prod<toolow)  {
     prod*=toohigh;
-    exponent--;
+    exponent -= 511;
   }
 }
 
@@ -89,19 +77,19 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   double p = pow(2,-exponent_low_high);
   const __m256d toolow  = _mm256_set1_pd(p);
   
-  __m256d abs_prod = abs(prod);  
+  __m256d abs_prod = abs(prod);
   __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
   __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);
-  int high_mask_bits = _mm256_movemask_pd(high_mask);
-  int low_mask_bits  = _mm256_movemask_pd(low_mask);
-  
-  if (high_mask_bits) {
-    exponent += _mm_popcnt_u32(high_mask_bits);
+
+  if (!_mm256_testz_pd(high_mask, high_mask)) [[unlikely]] {
+    int high_mask_bits = _mm256_movemask_pd(high_mask);
+    exponent += _mm_popcnt_u32(high_mask_bits) * 511;
     abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);  
   }
   
-  if (low_mask_bits) {
-    exponent -= _mm_popcnt_u32(low_mask_bits);
+  if (!_mm256_testz_pd(low_mask, low_mask)) [[unlikely]] {
+    int low_mask_bits  = _mm256_movemask_pd(low_mask);
+    exponent -= _mm_popcnt_u32(low_mask_bits) * 511;
     abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
   }
   
@@ -114,33 +102,33 @@ inline void checkoverflow(__m256d &prod, __m256i& exponents) {
   prod = clear_exponent_and_sign(prod);
   exponents = _mm256_add_epi64(exponents, new_exponents);
   */
-  
-  __m256i mantisse = extract_and_clear_mantisse(prod);
-  exponents = _mm256_add_epi64(exponents, mantisse);
-  
+
+  __m256i exponent = extract_and_clear_exponent(prod);
+  exponents = _mm256_add_epi64(exponents, exponent);
+
 /*
   const __m256d toohigh = _mm256_set1_pd(pow(2,exponent_low_high));
   double p = pow(2,-exponent_low_high);
   const __m256d toolow  = _mm256_set1_pd(p);
   const __m256d convert_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
-  
+
   __m256d abs_prod = abs(prod);
-  
-  __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);  
+
+  __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
   if (!_mm256_testz_pd(high_mask, high_mask)) [[unlikely]] {
     __m256d inc = _mm256_and_pd(high_mask, convert_mask);
     exponent = _mm256_add_pd(exponent, inc);
-    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);  
+    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);
   }
 
-    
+
   __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);
   if (!_mm256_testz_pd(low_mask, low_mask)) [[unlikely]] {
-    __m256d dec = _mm256_and_pd(low_mask, convert_mask);  
+    __m256d dec = _mm256_and_pd(low_mask, convert_mask);
     exponent = _mm256_sub_pd(exponent, dec);
     abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
   }
-  
+
   prod = abs_prod;
 */
 }
@@ -161,19 +149,7 @@ __m256d save_mul(__m256d prod1, __m256d prod2, __m256i& exponents) {
   return prod; 
 }
 
-double horizontal_product(__m256d v, int64_t& exponent) {
-  __m256d one = _mm256_set1_pd(1);
-  __m256d vhigh = _mm256_permute2f128_pd(v, one, 0b0100000);
-  __m256d vlow  = _mm256_permute2f128_pd(v, one, 0b0100001);  
-  __m256d x = save_mul(vlow, vhigh, exponent);
-  
-  __m128d prod1 = _mm256_castpd256_pd128(x);
-  
-  __m128d high64 = _mm_unpackhi_pd(prod1, prod1);
-  double result = abs(_mm_cvtsd_f64(_mm_mul_sd(prod1, high64)));  // reduce to scalar
-  checkoverflow(result, exponent);
-  return result;
-}
+
 
 int64_t horizontal_sum(__m256i v) {
   __m256i hi = _mm256_unpackhi_epi64(v, v);
@@ -185,12 +161,80 @@ int64_t horizontal_sum(__m256i v) {
 static const __m256d _MM256_ONE = _mm256_set1_pd(1);  
 
 
-// To get acutal value is represented by fraction * 2 ^ (511 * exponent).
-// There is no guarantee that fraction is a value close to 1.0, hence the samee value can be represented in different ways.
-struct LargeExponentValue {
-  double fraction;
-  int64_t exponent;
+constexpr const int EXPONENT_BIAS = 1023;
+
+class LargeExponentFloat {
+  private:
+
+    typedef union {
+      double f;
+      struct {
+        int64_t significand : 52;
+        unsigned int exponent : 11;
+        unsigned int sign : 1;
+      } parts;
+    } float_cast;
+
+  public:
+    double significand;
+    int64_t exponent;
+
+    LargeExponentFloat(double initial_value):
+      significand(initial_value),
+      exponent(0) {}
+
+    LargeExponentFloat(double significand, int64_t exponent):
+      significand(significand),
+      exponent(exponent) {}
+
+    LargeExponentFloat(const LargeExponentFloat& f):
+      significand(f.significand),
+      exponent(f.exponent) {}
+
+  void normalize() {
+    float_cast& c = reinterpret_cast<float_cast&>(significand);
+    exponent += c.parts.exponent - EXPONENT_BIAS;
+    c.parts.exponent = EXPONENT_BIAS;
+  }
+
+  LargeExponentFloat normalized() const {
+    LargeExponentFloat f(*this);
+    f.normalize();
+    return f;
+  }
+
+  bool operator==(const LargeExponentFloat& other) const {
+    LargeExponentFloat f1 = this->normalized();
+    LargeExponentFloat f2 = other.normalized();
+    return (f1.significand == f2.significand) && (f1.exponent == f2.exponent);
+  }
+
 };
+
+std::ostream& operator<<(std::ostream& os, const LargeExponentFloat& v_raw) {
+  LargeExponentFloat v = v_raw.normalized();
+  return os << v.significand << " * 2^ " << v.exponent;
+}
+
+void checkoverflow(LargeExponentFloat& f) {
+  const double toohigh = pow(2,exponent_low_high);
+  const double toolow = pow(2,-exponent_low_high);
+  if (f.significand>toohigh) {
+    f.significand *= toolow;
+    f.exponent += exponent_low_high;
+  } else if (f.significand<toolow)  {
+    f.significand *= toohigh;
+    f.exponent -= exponent_low_high;
+  }
+}
+
+inline LargeExponentFloat save_mul(const LargeExponentFloat& a, const LargeExponentFloat& b) {
+  double prod = a.significand * b.significand;
+  int64_t exponent = a.exponent + b.exponent;
+  LargeExponentFloat result(prod, exponent);
+  checkoverflow(result);
+  return result;
+}
 
 
 class VProd {
@@ -201,14 +245,17 @@ class VProd {
     __m256d prod4;
     
     __m256i exponent;
- 
+
+    int64_t exponent_bias_count;
+
   public:  
-    VProd(double fraction = 1.0, int64_t exponent_ = 0): 
+    VProd(double fraction = 1.0, int64_t exponent = 0):
       prod1(_mm256_set_pd(1, 1, 1, fraction)),
       prod2(_MM256_ONE),
       prod3(_MM256_ONE),
       prod4(_MM256_ONE),
-      exponent(_mm256_set_epi64x(0, 0, 0, exponent_))
+      exponent(_mm256_set_epi64x(0, 0, 0, exponent)),
+      exponent_bias_count(0)
     {
     }
 
@@ -224,6 +271,7 @@ class VProd {
       ::checkoverflow(prod2, exponent);
       ::checkoverflow(prod3, exponent);
       ::checkoverflow(prod4, exponent);
+      exponent_bias_count++;
     }
     
     void mul(const VProd& other) {
@@ -234,45 +282,48 @@ class VProd {
       exponent += other.exponent;
     }
 
-    LargeExponentValue get() const {
-      LargeExponentValue result;
+    LargeExponentFloat get() const {
+      int64_t combined_exponent = horizontal_sum(exponent) - EXPONENT_BIAS * exponent_bias_count * 16;
     
-      result.exponent = horizontal_sum(exponent);
+      __m256d prod12 = save_mul(prod1, prod2, combined_exponent);
+      __m256d prod34 = save_mul(prod3, prod4, combined_exponent);
+      __m256d prod = save_mul(prod12, prod34, combined_exponent);
     
-      __m256d prod12 = save_mul(prod1, prod2, result.exponent);
-      __m256d prod34 = save_mul(prod3, prod4, result.exponent);
-      __m256d prod = save_mul(prod12, prod34, result.exponent);
-    
-      result.fraction = horizontal_product(prod, result.exponent);
-      return result;
-    }
-    
-    void debug() {
-      cout << "prod1=";
-      print(prod1);
-      cout << "prod2=";
-      print(prod2);
-      cout << ", exponent=";
-      print(exponent);
-      cout << endl;
+      double significand = horizontal_product(prod, combined_exponent);
+      return LargeExponentFloat(significand, combined_exponent);
     }
 
+	static double horizontal_product(__m256d v, int64_t& exponent) {
+	  __m256d one = _mm256_set1_pd(1);
+	  __m256d vhigh = _mm256_permute2f128_pd(v, one, 0b0100000);
+	  __m256d vlow  = _mm256_permute2f128_pd(v, one, 0b0100001);
+	  __m256d x = save_mul(vlow, vhigh, exponent);
+
+	  __m128d prod1 = _mm256_castpd256_pd128(x);
+
+	  __m128d high64 = _mm_unpackhi_pd(prod1, prod1);
+	  double result = abs(_mm_cvtsd_f64(_mm_mul_sd(prod1, high64)));  // reduce to scalar
+	  checkoverflow(result, exponent);
+	  return result;
+	}
 };
+
 
 
 template<typename T>
 void assert_eq(T a, T b) {
-  if (a != b) {
-    cerr << "Expected a == b but " << a << " != " << b << endl;
-   // throw "assertion failed";
-  } 
+  if (a == b) {
+    return;
+  }
+  cerr << "Expected a == b but " << a << " != " << b << endl;
+  throw "assertion failed";
 }
 
 void assert_approx(double a, double b) {
   const double ratio = abs(abs(a/b) - 1);
   if (ratio > 1e-5) {
     cerr << "Expected a ~= b but " << a << " != " << b << endl;
-  //  throw "assertion failed";
+    throw "assertion failed";
   } 
 }
 
@@ -285,59 +336,69 @@ inline void test_vprod() {
   }
 
   {
-    __m256i exp = extract_exponents(_mm256_set_pd(2, 1e20, 1e-20, -5e189));
-    assert_eq(1LL, _mm256_extract_epi64(exp, 3));
-    assert_eq(66LL, _mm256_extract_epi64(exp, 2));
-    assert_eq(-67LL, _mm256_extract_epi64(exp, 1));
-    assert_eq(630LL, _mm256_extract_epi64(exp, 0));
-  }
+    __m256d v = _mm256_set_pd(2, 1e20, 1e-20, -5e189);
+    __m256i exp = extract_and_clear_exponent(v);
+    assert_eq(EXPONENT_BIAS +  1LL, _mm256_extract_epi64(exp, 3));
+    assert_eq(EXPONENT_BIAS + 66LL, _mm256_extract_epi64(exp, 2));
+    assert_eq(EXPONENT_BIAS - 67LL, _mm256_extract_epi64(exp, 1));
+    assert_eq(EXPONENT_BIAS +630LL, _mm256_extract_epi64(exp, 0));
 
-  {
-    __m256d v = clear_exponent_and_sign(_mm256_set_pd(1, 2, 3, -4));
-    debug(v);
+    assert_eq(1.0, extract_double(v, 3));
+    assert_approx(1.35525271561, extract_double(v, 2));
+    assert_approx(1.4757395259, extract_double(v, 1));
+    assert_approx(-1.12220638669, extract_double(v, 0));
   }
-
 
   {
     __m256d x = _mm256_set_pd(2e+26, 5e+150, 3e+50, 2.98334e+46);
     int64_t e = 0;
-    double prod = horizontal_product(x, e);
+    double prod = VProd::horizontal_product(x, e);
     assert_approx(1.335046e+120, prod);
-    assert_eq(1L, e);
+    assert_eq(511L, e);
   }
-  
+
   {
-  VProd prod(2.0); // 2
-  prod.mul_no_overflow(_mm256_set_pd(2.0, 3.0, 5.0, 10.0), _MM256_ONE, _MM256_ONE, _MM256_ONE);  // 2 * 2 * 3 * 5 * 10 = 600
-  
-  auto actual = prod.get();
-  assert_eq(600., actual.fraction);
-  assert_eq(0L, actual.exponent);
-  
-  prod.mul_no_overflow(_MM256_ONE, _mm256_set_pd(1e100, -1e50, 1e25, 1e25), _MM256_ONE, _MM256_ONE);
+    LargeExponentFloat f1(1536.0);
+    LargeExponentFloat f2(1536.0, 0);
+    LargeExponentFloat f3(0.75, 11);
 
-  actual = prod.get();
-  assert_approx(8.95001e48, actual.fraction);
-  assert_eq(1L, actual.exponent);
+    assert_eq(f1, f2);
+    assert_eq(f1, f3);
 
-  prod.mul_no_overflow(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200), _MM256_ONE, _MM256_ONE, _MM256_ONE);
-  prod.check_overflow();
-  
-  actual = prod.get();
-  assert_approx(1.3350445e+70, actual.fraction);
-  assert_eq(2L, actual.exponent);
-  
-  VProd prod2(1.0);
-  prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120), _MM256_ONE, _MM256_ONE, _MM256_ONE);
-  
-  /*
-  prod.mul(prod2);
-  actual = prod.get();
-  assert_approx(6e12, actual.fraction);
-  assert_eq(0L, actual.exponent);
- */ }
+    LargeExponentFloat f4(-1536.0, -100);
+    f4.normalize();
+    assert_eq(-1.5, f4.significand);
+    assert_eq(-90L, f4.exponent);
 
-  
+    LargeExponentFloat f5(1.0, 50);
+    f5.normalize();
+    assert_eq(1.0, f5.significand);
+    assert_eq(50L, f5.exponent);
+  }
+
+  {
+    VProd prod(2.0); // 2
+    prod.mul_no_overflow(_mm256_set_pd(2.0, 3.0, 5.0, 10.0), _MM256_ONE, _MM256_ONE, _MM256_ONE);  // 2 * 2 * 3 * 5 * 10 = 600
+    auto actual = prod.get();
+    assert_eq(LargeExponentFloat(600.), actual);
+
+    prod.mul_no_overflow(_MM256_ONE, _mm256_set_pd(1e100, -1e50, 1e25, 1e25), _MM256_ONE, _MM256_ONE);
+    actual = prod.get().normalized();
+    assert_approx(1.53096133651, actual.significand);
+    assert_eq(511L + 162L, actual.exponent);
+
+    prod.mul_no_overflow(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200), _MM256_ONE, _MM256_ONE, _MM256_ONE);
+    prod.check_overflow();
+
+    actual = prod.get().normalized();
+    assert_approx(1.93435752767, actual.significand);
+    assert_eq(1022L + 232L, actual.exponent);
+
+    VProd prod2(1.0);
+    prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120), _MM256_ONE, _MM256_ONE, _MM256_ONE);
+  }
+
+  cout << "vprod tests passed" << endl;
 }
 
 
