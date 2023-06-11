@@ -242,17 +242,23 @@ void prod_complexcomplex(const long int N, const long int k, const double u1, co
   vprod1.check_overflow();
   vprod2.check_overflow();
 
+  __m256i vj = _mm256_set1_epi64x(skipj);
+  __m256i vk = _mm256_set1_epi64x(k);
+  __m256i four = _mm256_set1_epi64x(4);
+  vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3,2,1,0));
+
+  for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j += 4) {
+    const __m256d x0 = _mm256_load_pd(&x[j]);
+    const __m256d y0 = _mm256_load_pd(&y[j]);
+    __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
+    vprod1.mul_mask_no_overflow(sqr_diff(x0, y0, u1_vec, v1_vec), mask);
+    vprod2.mul_mask_no_overflow(sqr_diff(x0, y0, u2_vec, v2_vec), mask);
+    vj = _mm256_add_epi64(vj, four);
+  }
+
   prod1 = vprod1.get();
   prod2 = vprod2.get();
-
-  for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) {
-    if (j == k) {
-      continue;
-    }
-    prod1 = save_mul(prod1, sqr(u1-x[j])+sqr(v1-y[j]));
-    prod2 = save_mul(prod2, sqr(u2-x[j])+sqr(v2-y[j]));
-  }
- }
+}
 
 // **************************************************************************
 
