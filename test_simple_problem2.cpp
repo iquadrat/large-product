@@ -106,20 +106,29 @@ inline void checkoverflow(double &prod, long int &exponent) {
 // N=1000..100000
 
 void prod_realreal(const long int N, const long int k, const double u1, const double u2, const double * x, LargeExponentFloat& prod1, LargeExponentFloat& prod2) {
+//  for (int j=0; j<N; j++) {
+//    if (j==k) {
+//      continue;
+//    }
+//    prod1 = save_mul(prod1, LargeExponentFloat(x[j] - u1));
+//    prod2 = save_mul(prod2, LargeExponentFloat(x[j] - u2));
+//  }
+
   const int64_t ELEMENTS_PER_LOOP = 4 * 4;
-  assert(N % ELEMENTS_PER_LOOP == 0);
+  assert(k >=0 && k < N);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
   VProd vprod1(prod1.significand, prod1.exponent);
   VProd vprod2(prod2.significand, prod2.exponent);
-  
+
   __m256d u1_vec = _mm256_set1_pd(u1);
   __m256d u2_vec = _mm256_set1_pd(u2);
-  
+
   int64_t skipj = k & (-ELEMENTS_PER_LOOP);
-  
+  int64_t lastj = N & (-ELEMENTS_PER_LOOP);
+
   // prod of u-x[j] for all j!=k
-  for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
+  for (int64_t j=0; j<lastj; j += ELEMENTS_PER_LOOP) [[likely]] {
     if (j != skipj) [[likely]] {
       const __m256d x0 = _mm256_load_pd(&x[j +  0]);
       const __m256d x1 = _mm256_load_pd(&x[j +  4]);
@@ -139,7 +148,7 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
         _mm256_sub_pd(u2_vec, x3)
       );
     }
-   
+
     if ((j / ELEMENTS_PER_LOOP) % 16 == 0)  {
       vprod1.check_overflow();
       vprod2.check_overflow();
@@ -149,14 +158,32 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
   vprod1.check_overflow();
   vprod2.check_overflow();
 
-  __m256i vj = _mm256_set1_epi64x(skipj);
-  __m256i vk = _mm256_set1_epi64x(k);
   __m256i four = _mm256_set1_epi64x(4);
-  vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3,2,1,0));
+  __m256i vk = _mm256_set1_epi64x(k);
 
-  for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j += 4) {
+  // Process the skipped block
+  if (skipj < lastj) {
+    __m256i vj = _mm256_set1_epi64x(skipj);
+    vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3, 2, 1, 0));
+    for (int j = skipj; j < skipj + ELEMENTS_PER_LOOP; j += 4) {
+      const __m256d x0 = _mm256_load_pd(&x[j]);
+      __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
+      vprod1.mul_mask_no_overflow(_mm256_sub_pd(u1_vec, x0), mask);
+      vprod2.mul_mask_no_overflow(_mm256_sub_pd(u2_vec, x0), mask);
+      vj = _mm256_add_epi64(vj, four);
+    }
+  }
+
+  vprod1.check_overflow();
+  vprod2.check_overflow();
+
+  // Process the remaining elements
+  __m256i vn = _mm256_set1_epi64x(N - 1);
+  __m256i vj = _mm256_set1_epi64x(lastj);
+  vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3,2,1,0));
+  for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
-    __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
+    __m256d mask = _mm256_castsi256_pd(_mm256_or_si256(_mm256_cmpgt_epi64(vj, vn), _mm256_cmpeq_epi64(vj, vk)));
     vprod1.mul_mask_no_overflow(_mm256_sub_pd(u1_vec, x0), mask);
     vprod2.mul_mask_no_overflow(_mm256_sub_pd(u2_vec, x0), mask);
     vj = _mm256_add_epi64(vj, four);
@@ -164,7 +191,6 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
 
   prod1 = vprod1.get();
   prod2 = vprod2.get();
-
 }
 
 void prod_realcomplex(const long int N, const double u, const double u0, const double * x, const double * y, double &prod, long int &exponent, double &prod0, long int &exponent0) {
@@ -205,22 +231,31 @@ __m256d sqr_diff(__m256d x, __m256d y, __m256d u, __m256d v) {
 
 
 void prod_complexcomplex(const long int N, const long int k, const double u1, const double u2, const double v1, const double v2, const double * x, const double * y, LargeExponentFloat& prod1, LargeExponentFloat& prod2) {
+//  for (int j=0; j<N; j++) {
+//    if (j==k) {
+//      continue;
+//    }
+//    prod1 = save_mul(prod1, LargeExponentFloat(sqr(u1-x[j])+sqr(v1-y[j])));
+//    prod2 = save_mul(prod2, LargeExponentFloat(sqr(u2-x[j])+sqr(v2-y[j])));
+//  }
+
   const int64_t ELEMENTS_PER_LOOP = 4 * 4;
-  assert(N % ELEMENTS_PER_LOOP == 0);
+  assert(k >=0 && k < N);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
   VProd vprod1(prod1.significand, prod1.exponent);
   VProd vprod2(prod2.significand, prod2.exponent);
 
-  __m256d u1_vec = _mm256_set1_pd(u1);
-  __m256d u2_vec = _mm256_set1_pd(u2);
-  __m256d v1_vec = _mm256_set1_pd(v1);
-  __m256d v2_vec = _mm256_set1_pd(v2);
+  const __m256d u1_vec = _mm256_set1_pd(u1);
+  const __m256d u2_vec = _mm256_set1_pd(u2);
+  const __m256d v1_vec = _mm256_set1_pd(v1);
+  const __m256d v2_vec = _mm256_set1_pd(v2);
 
-  int64_t skipj = k & (-ELEMENTS_PER_LOOP);
+  const int64_t skipj = k & (-ELEMENTS_PER_LOOP);
+  const int64_t lastj = N & (-ELEMENTS_PER_LOOP);
 
   // prod of u-x[j] for all j!=k
-  for (int64_t j=0; j<N; j += ELEMENTS_PER_LOOP) [[likely]] {
+  for (int64_t j=0; j<lastj; j += ELEMENTS_PER_LOOP) [[likely]] {
     if (j != skipj) [[likely]] {
       const __m256d x0 = _mm256_load_pd(&x[j +  0]);
       const __m256d x1 = _mm256_load_pd(&x[j +  4]);
@@ -245,7 +280,7 @@ void prod_complexcomplex(const long int N, const long int k, const double u1, co
         sqr_diff(x3, y3, u2_vec, v2_vec)
       );
     }
-   
+
     if ((j / ELEMENTS_PER_LOOP) % 16 == 0) {
       vprod1.check_overflow();
       vprod2.check_overflow();
@@ -255,15 +290,34 @@ void prod_complexcomplex(const long int N, const long int k, const double u1, co
   vprod1.check_overflow();
   vprod2.check_overflow();
 
-  __m256i vj = _mm256_set1_epi64x(skipj);
-  __m256i vk = _mm256_set1_epi64x(k);
-  __m256i four = _mm256_set1_epi64x(4);
-  vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3,2,1,0));
+  const __m256i vk = _mm256_set1_epi64x(k);
+  const __m256i four = _mm256_set1_epi64x(4);
 
-  for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j += 4) {
+  // Process the skipped block
+  if (skipj < lastj) [[likely]] {
+    __m256i vj = _mm256_set1_epi64x(skipj);
+    vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3, 2, 1, 0));
+    for (int j = skipj; j < skipj + ELEMENTS_PER_LOOP; j += 4) {
+      const __m256d x0 = _mm256_load_pd(&x[j]);
+      const __m256d y0 = _mm256_load_pd(&y[j]);
+      __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
+      vprod1.mul_mask_no_overflow(sqr_diff(x0, y0, u1_vec, v1_vec), mask);
+      vprod2.mul_mask_no_overflow(sqr_diff(x0, y0, u2_vec, v2_vec), mask);
+      vj = _mm256_add_epi64(vj, four);
+    }
+  }
+
+  vprod1.check_overflow();
+  vprod2.check_overflow();
+
+  // Process the remaining elements
+  __m256i vn = _mm256_set1_epi64x(N - 1);
+  __m256i vj = _mm256_set1_epi64x(lastj);
+  vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3,2,1,0));
+  for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
     const __m256d y0 = _mm256_load_pd(&y[j]);
-    __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
+    __m256d mask = _mm256_castsi256_pd(_mm256_or_si256(_mm256_cmpgt_epi64(vj, vn), _mm256_cmpeq_epi64(vj, vk)));
     vprod1.mul_mask_no_overflow(sqr_diff(x0, y0, u1_vec, v1_vec), mask);
     vprod2.mul_mask_no_overflow(sqr_diff(x0, y0, u2_vec, v2_vec), mask);
     vj = _mm256_add_epi64(vj, four);
@@ -301,7 +355,49 @@ void test_realreal() {
     assert_eq(101 * 511L + 167, prod1.exponent);
     assert_approx(0.50089, prod2.significand);
     assert_eq(-23262L, prod2.exponent);
-   
+
+    delete[] x;
+  }
+
+  {
+    constexpr int64_t N = 1000;
+    double* x = new_double_array(N);
+    gen = std::mt19937_64(42);
+    init_random_positions(N,-1,1,x);
+
+    LargeExponentFloat prod1(7.1, 42 * 511);
+    LargeExponentFloat prod2(0.02, -2 * 511);
+
+    prod_realreal(N, 61, 0.0521, 1.213, x, prod1, prod2);
+    prod1.normalize_exponent();
+    prod2.normalize_exponent();
+
+    assert_approx(-0.897775, prod1.significand);
+    assert_eq(19932L, prod1.exponent);
+    assert_approx(-0.992222 , prod2.significand);
+    assert_eq(-932L, prod2.exponent);
+
+    delete[] x;
+  }
+
+  {
+    constexpr int64_t N = 999;
+    double* x = new_double_array(N);
+    gen = std::mt19937_64(42);
+    init_random_positions(N,-1,1,x);
+
+    LargeExponentFloat prod1(7.1, 42 * 511);
+    LargeExponentFloat prod2(0.02, -2 * 511);
+
+    prod_realreal(N, 995, 0.0521, 1.213, x, prod1, prod2);
+    prod1.normalize_exponent();
+    prod2.normalize_exponent();
+
+    assert_approx(-0.534702, prod1.significand);
+    assert_eq(19931L, prod1.exponent);
+    assert_approx(0.552373 , prod2.significand);
+    assert_eq(-931L, prod2.exponent);
+
     delete[] x;
   }
 
@@ -329,6 +425,30 @@ void test_complexcomplex() {
     assert_eq(64905L, prod1.exponent);
     assert_approx(0.756793, prod2.significand);
     assert_eq(-17743L, prod2.exponent);
+
+    delete[] x;
+    delete[] y;
+  }
+
+  {
+    constexpr int64_t N = 999;
+    double* x = new_double_array(N);
+    double* y = new_double_array(N);
+    gen = std::mt19937_64(11);
+    init_random_positions(N,-1,1,x);
+    init_random_positions(N,-1,1,y);
+
+    LargeExponentFloat prod1(7.1, 42 * 511);
+    LargeExponentFloat prod2(0.02, -2 * 511);
+
+    prod_complexcomplex(N, 997, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, prod2);
+    prod1.normalize_exponent();
+    prod2.normalize_exponent();
+
+    assert_approx(0.518394, prod1.significand);
+    assert_eq(24163L, prod1.exponent);
+    assert_approx(0.742441, prod2.significand);
+    assert_eq(-2072L, prod2.exponent);
 
     delete[] x;
     delete[] y;

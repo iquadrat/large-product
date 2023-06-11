@@ -9,31 +9,19 @@
 
 using namespace std;
 
-void print(__m256d v) {
-  double x[4];
-  _mm256_store_pd(x, v);
-  cout << x[0] << "," << x[1] << "," << x[2] << "," << x[3] << endl;
-}
-
-
-void debug(__m256d v) {
-  print(v);
-}
-
-void print(__m256i v) {
-  union {
-    __m256i v;
-     int64_t a[4];
-  } x;
-  _mm256_store_si256(&x.v, v);
-  cout << x.a[0] << "," << x.a[1] << "," << x.a[2] << "," << x.a[3] << endl;
-
-}
-
 std::ostream& operator<<(std::ostream& os, __m256d v) {
   double x[4];
   _mm256_store_pd(x, v);
   return os << "<" <<  x[0] << "," << x[1] << "," << x[2] << "," << x[3]  << ">";
+}
+
+std::ostream& operator<<(std::ostream& os, __m256i v) {
+  union {
+    __m256i v;
+    int64_t a[4];
+  } x;
+  _mm256_store_si256(&x.v, v);
+  return os << x.a[0] << "," << x.a[1] << "," << x.a[2] << "," << x.a[3]  << ">";
 }
 
 double extract_double(__m256d v, int index) {
@@ -105,7 +93,7 @@ class LargeExponentFloat {
   void normalize_exponent() {
     int delta_exponent;
     double mantissa = std::frexp(significand, &delta_exponent);
-    significand= std::ldexp(mantissa, 0);
+    significand = std::ldexp(mantissa, 0);
     exponent += delta_exponent;
   }
 
@@ -128,6 +116,7 @@ std::ostream& operator<<(std::ostream& os, const LargeExponentFloat& v_raw) {
   return os << v.significand << " * 2^ " << v.exponent;
 }
 
+// Note: This is very slow!
 inline LargeExponentFloat save_mul(const LargeExponentFloat& a, const LargeExponentFloat& b) {
   LargeExponentFloat a_normalized = a;
   a_normalized.normalize_exponent();
