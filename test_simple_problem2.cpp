@@ -262,13 +262,15 @@ void test_realreal() {
     LargeExponentFloat prod2(0.02, -2 * 511);
     
     prod_realreal(N, 61, 0.0521, 1.213, x, prod1, prod2);
-    assert_approx(9.56257e-99, prod1.significand);
-    assert_eq(-1533L, prod1.exponent);
-    assert_approx(5.14096e+09, prod2.significand);
-    assert_eq(0L, prod2.exponent);
+    prod1.normalize();
+    prod2.normalize();
+    assert_approx(0.6536168176 , prod1.significand);
+    assert_eq(-1533L - 325, prod1.exponent);
+    assert_approx(0.5984865129 , prod2.significand);
+    assert_eq(33L, prod2.exponent);
 
-    
     prod_realreal(N, 256, -10.23, 0.021, x, prod1, prod2);
+
     assert_approx(1.06159e+50, prod1.significand);
     assert_eq(101 * 511L, prod1.exponent);
     assert_approx(2.11219e-81, prod2.significand);
@@ -277,6 +279,7 @@ void test_realreal() {
     delete[] x;
   }
 
+  cout << "test_realreal passed" << endl;
 }
 
 void test_complexcomplex() {
@@ -294,8 +297,6 @@ void test_complexcomplex() {
 
     prod_complexcomplex(N, 2122, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, prod2);
 
-    cout << prod1 << endl;
-
     assert_approx(161.905, prod1.significand);
     assert_eq(127 * 511L, prod1.exponent);
     assert_approx(6.29374e-112, prod2.significand);
@@ -305,6 +306,7 @@ void test_complexcomplex() {
     delete[] y;
   }
 
+  cout << "test_complexcomplex passed" << endl;
 }
 
 
