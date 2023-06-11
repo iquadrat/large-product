@@ -146,7 +146,7 @@ __m256d save_mul(__m256d prod1, __m256d prod2, int64_t& exponent) {
 __m256d save_mul(__m256d prod1, __m256d prod2, __m256i& exponents) {
   __m256d prod = _mm256_mul_pd(prod1, prod2);
   checkoverflow(prod, exponents);
-  return prod; 
+  return prod;
 }
 
 
@@ -169,9 +169,9 @@ class LargeExponentFloat {
     typedef union {
       double f;
       struct {
-        int64_t significand : 52;
+        uint64_t significand : 52;
         unsigned int exponent : 11;
-        unsigned int sign : 1;
+        int sign : 1;
       } parts;
     } float_cast;
 
@@ -192,9 +192,10 @@ class LargeExponentFloat {
       exponent(f.exponent) {}
 
   void normalize() {
-    float_cast& c = reinterpret_cast<float_cast&>(significand);
-    exponent += c.parts.exponent - EXPONENT_BIAS;
-    c.parts.exponent = EXPONENT_BIAS;
+    int delta_exponent;
+    double mantissa = std::frexp(significand, &delta_exponent);
+    significand= std::ldexp(mantissa, 0);
+    exponent += delta_exponent;
   }
 
   LargeExponentFloat normalized() const {
@@ -284,11 +285,11 @@ class VProd {
 
     LargeExponentFloat get() const {
       int64_t combined_exponent = horizontal_sum(exponent) - EXPONENT_BIAS * exponent_bias_count * 16;
-    
+
       __m256d prod12 = save_mul(prod1, prod2, combined_exponent);
       __m256d prod34 = save_mul(prod3, prod4, combined_exponent);
       __m256d prod = save_mul(prod12, prod34, combined_exponent);
-    
+
       double significand = horizontal_product(prod, combined_exponent);
       return LargeExponentFloat(significand, combined_exponent);
     }
@@ -358,22 +359,27 @@ inline void test_vprod() {
   }
 
   {
+    LargeExponentFloat f5(1.0, 50);
+    f5.normalize();
+    assert_eq(0.5, f5.significand);
+    assert_eq(51L, f5.exponent);
+
+    LargeExponentFloat f4(-1536.0, -100);
+    f4.normalize();
+    assert_eq(-0.75, f4.significand);
+    assert_eq(-89L, f4.exponent);
+
+    LargeExponentFloat f6(9.56257e-99, -1533);
+    f6.normalize();
+    assert_approx(0.6536168176, f6.significand);
+    assert_eq(-1533L -325 , f6.exponent);
+
     LargeExponentFloat f1(1536.0);
     LargeExponentFloat f2(1536.0, 0);
     LargeExponentFloat f3(0.75, 11);
 
     assert_eq(f1, f2);
     assert_eq(f1, f3);
-
-    LargeExponentFloat f4(-1536.0, -100);
-    f4.normalize();
-    assert_eq(-1.5, f4.significand);
-    assert_eq(-90L, f4.exponent);
-
-    LargeExponentFloat f5(1.0, 50);
-    f5.normalize();
-    assert_eq(1.0, f5.significand);
-    assert_eq(50L, f5.exponent);
   }
 
   {
@@ -384,15 +390,15 @@ inline void test_vprod() {
 
     prod.mul_no_overflow(_MM256_ONE, _mm256_set_pd(1e100, -1e50, 1e25, 1e25), _MM256_ONE, _MM256_ONE);
     actual = prod.get().normalized();
-    assert_approx(1.53096133651, actual.significand);
-    assert_eq(511L + 162L, actual.exponent);
+    assert_approx(0.76548066825 , actual.significand);
+    assert_eq(511L + 163L, actual.exponent);
 
     prod.mul_no_overflow(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200), _MM256_ONE, _MM256_ONE, _MM256_ONE);
     prod.check_overflow();
 
     actual = prod.get().normalized();
-    assert_approx(1.93435752767, actual.significand);
-    assert_eq(1022L + 232L, actual.exponent);
+    assert_approx(0.96717876383 , actual.significand);
+    assert_eq(1022L + 233L, actual.exponent);
 
     VProd prod2(1.0);
     prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120), _MM256_ONE, _MM256_ONE, _MM256_ONE);
