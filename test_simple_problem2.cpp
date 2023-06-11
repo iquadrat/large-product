@@ -112,6 +112,7 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
       const __m256d x1 = _mm256_load_pd(&x[j +  4]);
       const __m256d x2 = _mm256_load_pd(&x[j +  8]);
       const __m256d x3 = _mm256_load_pd(&x[j + 12]);
+
       vprod1.mul_no_overflow(
         _mm256_sub_pd(u1_vec, x0),
         _mm256_sub_pd(u1_vec, x1),
@@ -134,19 +135,34 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
 
   vprod1.check_overflow();
   vprod2.check_overflow();
-    
+
+  __m256i vj = _mm256_set1_epi64x(skipj);
+  __m256i vk = _mm256_set1_epi64x(k);
+  __m256i four = _mm256_set1_epi64x(4);
+  vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3,2,1,0));
+
+  for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j += 4) {
+    const __m256d x0 = _mm256_load_pd(&x[j]);
+    __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
+    vprod1.mul_mask(_mm256_sub_pd(u1_vec, x0), mask);
+    vprod2.mul_mask(_mm256_sub_pd(u2_vec, x0), mask);
+    vj = _mm256_add_epi64(vj, four);
+  }
+
   prod1 = vprod1.get();
   prod2 = vprod2.get();
-
+/*
   for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) {
     if (j == k) {
       continue;
     }
     prod1 = save_mul(prod1, abs(u1 - x[j]));
     prod2 = save_mul(prod2, abs(u2 - x[j]));
+    cout << j << ": " << prod1 << endl;
   }
+*/
 
-} 
+}
 
 void prod_realcomplex(const long int N, const double u, const double u0, const double * x, const double * y, double &prod, long int &exponent, double &prod0, long int &exponent0) {
   

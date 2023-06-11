@@ -26,8 +26,14 @@ void print(__m256i v) {
      int64_t a[4];
   } x;
   _mm256_store_si256(&x.v, v);
-  cout << hex << x.a[0] << "," << x.a[1] << "," << x.a[2] << "," << x.a[3] << endl;
+  cout << x.a[0] << "," << x.a[1] << "," << x.a[2] << "," << x.a[3] << endl;
 
+}
+
+std::ostream& operator<<(std::ostream& os, __m256d v) {
+  double x[4];
+  _mm256_store_pd(x, v);
+  return os << "<" <<  x[0] << "," << x[1] << "," << x[2] << "," << x[3]  << ">";
 }
 
 double extract_double(__m256d v, int index) {
@@ -97,40 +103,8 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
 }
 
 inline void checkoverflow(__m256d &prod, __m256i& exponents) {
-/*
-  __m256i new_exponents = extract_exponents(prod);
-  prod = clear_exponent_and_sign(prod);
-  exponents = _mm256_add_epi64(exponents, new_exponents);
-  */
-
   __m256i exponent = extract_and_clear_exponent(prod);
   exponents = _mm256_add_epi64(exponents, exponent);
-
-/*
-  const __m256d toohigh = _mm256_set1_pd(pow(2,exponent_low_high));
-  double p = pow(2,-exponent_low_high);
-  const __m256d toolow  = _mm256_set1_pd(p);
-  const __m256d convert_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(0x3ff0000000000000ULL));
-
-  __m256d abs_prod = abs(prod);
-
-  __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
-  if (!_mm256_testz_pd(high_mask, high_mask)) [[unlikely]] {
-    __m256d inc = _mm256_and_pd(high_mask, convert_mask);
-    exponent = _mm256_add_pd(exponent, inc);
-    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);
-  }
-
-
-  __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);
-  if (!_mm256_testz_pd(low_mask, low_mask)) [[unlikely]] {
-    __m256d dec = _mm256_and_pd(low_mask, convert_mask);
-    exponent = _mm256_sub_pd(exponent, dec);
-    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
-  }
-
-  prod = abs_prod;
-*/
 }
 
 __m256d mul_diff(__m256d prod, __m256d u, __m256d x) {
@@ -244,9 +218,10 @@ class VProd {
     __m256d prod2;
     __m256d prod3;
     __m256d prod4;
-    
-    __m256i exponent;
 
+    // Stores extra exponents for each product. Exponents are stored biased, so to get the actual exponent, you need
+    // to sum the 4 values and subtract exponent_bias_count * EXPONENT_BIAS.
+    __m256i exponent;
     int64_t exponent_bias_count;
 
   public:  
@@ -266,13 +241,19 @@ class VProd {
       prod3 = _mm256_mul_pd(prod3, mul3);
       prod4 = _mm256_mul_pd(prod4, mul4);
     }
-    
-    void check_overflow() {
+
+    void mul_mask(__m256d mul1, __m256d mask1) {
+      prod1 = _mm256_blendv_pd(_mm256_mul_pd(prod1, mul1), prod1, mask1);
+      ::checkoverflow(prod1, exponent);
+      exponent_bias_count += 4;
+    }
+
+  void check_overflow() {
       ::checkoverflow(prod1, exponent);
       ::checkoverflow(prod2, exponent);
       ::checkoverflow(prod3, exponent);
       ::checkoverflow(prod4, exponent);
-      exponent_bias_count++;
+      exponent_bias_count += 16;
     }
     
     void mul(const VProd& other) {
@@ -284,7 +265,7 @@ class VProd {
     }
 
     LargeExponentFloat get() const {
-      int64_t combined_exponent = horizontal_sum(exponent) - EXPONENT_BIAS * exponent_bias_count * 16;
+      int64_t combined_exponent = horizontal_sum(exponent) - EXPONENT_BIAS * exponent_bias_count;
 
       __m256d prod12 = save_mul(prod1, prod2, combined_exponent);
       __m256d prod34 = save_mul(prod3, prod4, combined_exponent);
@@ -402,6 +383,27 @@ inline void test_vprod() {
 
     VProd prod2(1.0);
     prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120), _MM256_ONE, _MM256_ONE, _MM256_ONE);
+  }
+
+  {
+    VProd prod(100.0);
+    __m256i mask = _mm256_cmpeq_epi64(_mm256_set1_epi64x(2), _mm256_set1_epi64x(2));
+    prod.mul_mask(_mm256_set1_pd(10.0), _mm256_castsi256_pd(mask));
+
+    auto actual = prod.get().normalized();
+    assert_eq(LargeExponentFloat(100.0), actual);
+
+    mask = _mm256_cmpeq_epi64(_mm256_set1_epi64x(2), _mm256_set1_epi64x(3));
+    prod.mul_mask(_mm256_set_pd(5.0, 2.0, 10.0, 0.1), _mm256_castsi256_pd(mask));
+    actual = prod.get().normalized();
+    assert_approx(0.9765625, actual.significand);
+    assert_eq(10L, actual.exponent);
+
+    mask = _mm256_cmpeq_epi64(_mm256_set_epi64x(3,2,1,0), _mm256_set1_epi64x(2));
+    prod.mul_mask(_mm256_set_pd(2.0, 3.0, 4.0, 5.0), _mm256_castsi256_pd(mask));
+    actual = prod.get().normalized();
+    assert_approx(0.6103515625 , actual.significand);
+    assert_eq(16L, actual.exponent);
   }
 
   cout << "vprod tests passed" << endl;
