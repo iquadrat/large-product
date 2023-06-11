@@ -46,17 +46,12 @@ double* new_double_array(int64_t size) {
   return static_cast<double*>(_mm_malloc(sizeof(double) * rounded_size, 64));
 }
 
-__m128i emulate_cvt_epi64_epi32(__m256i vec)
+__m128i shl52_and_extract_high32bit_from_epi64(__m256i vec)
 {
-  __m128i low = _mm256_castsi256_si128(vec);        // Extract the low 128 bits
-  __m128i high = _mm256_extractf128_si256(vec, 1);    // Extract the high 128 bits
-
-  __m128i low_shifted = _mm_shuffle_epi32(low, 0xD8);  // Shift the low 64-bit values
-  __m128i high_shifted = _mm_shuffle_epi32(high, 0xD8); // Shift the high 64-bit values
-
-  __m128i result = _mm_unpacklo_epi64(low_shifted, high_shifted); // Interleave the low and high parts
-
-  return result;
+    __m128i low  = _mm256_castsi256_si128(vec);
+    __m128i high = _mm256_extractf128_si256(vec, 1);
+    low = _mm_srli_epi64(low, 32);
+    return _mm_srli_epi32(_mm_or_si128(low, high), 20);
 }
 
 __m128i extract_and_clear_exponent(__m256d& v) {
@@ -66,11 +61,7 @@ __m128i extract_and_clear_exponent(__m256d& v) {
     __m256d exponent_pd = _mm256_and_pd(exponent_mask, v);
     __m256d cleared_exponent = _mm256_andnot_pd(exponent_mask, v);
 
-    __m256 exponent_ps = _mm256_castpd_ps(exponent_pd);
-    exponent_ps = _mm256_shuffle_ps(exponent_ps, exponent_ps, 0b10110001);
-
-    __m128i x = emulate_cvt_epi64_epi32(_mm256_castps_si256(exponent_ps));
-    __m128i exponent = _mm_srli_epi32(x, 20);
+    __m128i exponent = shl52_and_extract_high32bit_from_epi64(_mm256_castpd_si256(exponent_pd));
     v = _mm256_or_pd(cleared_exponent, exponent_reset_mask);
     return exponent;
 }
@@ -80,26 +71,11 @@ __m256d abs(__m256d a) {
   return _mm256_andnot_pd(mask, a); 
 }
 
-
-//int64_t horizontal_sum(__m256i v) {
-//  __m256i hi = _mm256_unpackhi_epi64(v, v);
-//  __m256i sumlohi = _mm256_add_epi64(v, hi);
-//  return _mm256_extract_epi64(sumlohi, 0) + _mm256_extract_epi64(sumlohi, 2);
-//}
-
-
 int32_t horizontal_sum(__m128i vec)
 {
-  __m128i permute = _mm_shuffle_epi32(vec, _MM_SHUFFLE(2, 3, 0, 1)); // Permute the elements
-  __m128i sum1 = _mm_add_epi32(vec, permute); // Add the original and permuted vectors
-
-  __m128i permute2 = _mm_shuffle_epi32(sum1, _MM_SHUFFLE(1, 0, 3, 2)); // Permute the elements
-  __m128i sum2 = _mm_add_epi32(sum1, permute2); // Add the previous sum and permuted vector
-
-  int32_t sum;
-  _mm_store_ss(reinterpret_cast<float*>(&sum), _mm_castsi128_ps(sum2)); // Store the result in a variable
-
-  return sum;
+  vec = _mm_hadd_epi32(vec, vec);
+  vec = _mm_hadd_epi32(vec, vec);
+  return _mm_extract_epi32(vec, 0);
 }
 
 static const __m256d M256D_ONE = _mm256_set1_pd(1);
@@ -160,7 +136,7 @@ std::ostream& operator<<(std::ostream& os, const LargeExponentFloat& v_raw) {
   return os << v.significand << " * 2^ " << v.exponent;
 }
 
-// Note: This is very slow!
+// Note: This is very slow as it is not optimized!
 inline LargeExponentFloat save_mul(const LargeExponentFloat& a, const LargeExponentFloat& b) {
   LargeExponentFloat a_normalized = a;
   a_normalized.normalize_exponent();
@@ -173,7 +149,6 @@ inline LargeExponentFloat save_mul(const LargeExponentFloat& a, const LargeExpon
   return LargeExponentFloat(prod, exponent);
 }
 
-
 class VProd {
   private:
     __m256d prod1;
@@ -184,7 +159,7 @@ class VProd {
     // Stores extra exponents for each product. Exponents are stored biased, so to get the actual exponent, you need
     // to sum the 4 values and subtract exponent_bias_count * EXPONENT_BIAS.
     __m128i exponent;
-    int64_t exponent_bias_count;
+    int32_t exponent_bias_count;
 
     static void normalize_exponent(__m256d &prod, __m128i& exponent) {
       __m128i delta_exponent = extract_and_clear_exponent(prod);
@@ -288,12 +263,12 @@ void assert_approx(double a, double b) {
 
 inline void test_vprod() {
   {
-    __m256i v64 = _mm256_set_epi64x(-4,3,2,1);
-    __m128i v32 = emulate_cvt_epi64_epi32(v64);
+    __m256i v64 = _mm256_set_epi64x(1024L << 52,3L << 52,2L << 52,1L << 52);
+    __m128i v32 = shl52_and_extract_high32bit_from_epi64(v64);
     assert_eq(1, _mm_extract_epi32(v32, 0));
-    assert_eq(2, _mm_extract_epi32(v32, 1));
-    assert_eq(3, _mm_extract_epi32(v32, 2));
-    assert_eq(-4, _mm_extract_epi32(v32, 3));
+    assert_eq(2, _mm_extract_epi32(v32, 2));
+    assert_eq(3, _mm_extract_epi32(v32, 1));
+    assert_eq(1024, _mm_extract_epi32(v32, 3));
   }
 
   {
@@ -305,8 +280,8 @@ inline void test_vprod() {
     __m256d v = _mm256_set_pd(2, 1e20, 1e-20, -5e189);
     __m128i exp = extract_and_clear_exponent(v);
     assert_eq(EXPONENT_BIAS +  1, _mm_extract_epi32(exp, 3));
-    assert_eq(EXPONENT_BIAS + 66, _mm_extract_epi32(exp, 2));
-    assert_eq(EXPONENT_BIAS - 67, _mm_extract_epi32(exp, 1));
+    assert_eq(EXPONENT_BIAS + 66, _mm_extract_epi32(exp, 1));
+    assert_eq(EXPONENT_BIAS - 67, _mm_extract_epi32(exp, 2));
     assert_eq(EXPONENT_BIAS +630, _mm_extract_epi32(exp, 0));
 
     assert_eq(1.0, extract_double(v, 3));
@@ -367,26 +342,26 @@ inline void test_vprod() {
     prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120), M256D_ONE, M256D_ONE, M256D_ONE);
   }
 
-//  {
-//    VProd prod(100.0);
-//    __m256i mask = _mm256_cmpeq_epi64(_mm256_set1_epi64x(2), _mm256_set1_epi64x(2));
-//    prod.mul_mask_no_overflow(_mm256_set1_pd(10.0), _mm256_castsi256_pd(mask));
-//
-//    auto actual = prod.get().normalized();
-//    assert_eq(LargeExponentFloat(100.0), actual);
-//
-//    mask = _mm256_cmpeq_epi64(_mm256_set1_epi64x(2), _mm256_set1_epi64x(3));
-//    prod.mul_mask_no_overflow(_mm256_set_pd(5.0, 2.0, 10.0, 0.1), _mm256_castsi256_pd(mask));
-//    actual = prod.get().normalized();
-//    assert_approx(0.9765625, actual.significand);
-//    assert_eq(10L, actual.exponent);
-//
-//    mask = _mm256_cmpeq_epi64(_mm256_set_epi64x(3,2,1,0), _mm256_set1_epi64x(2));
-//    prod.mul_mask_no_overflow(_mm256_set_pd(2.0, 3.0, 4.0, 5.0), _mm256_castsi256_pd(mask));
-//    actual = prod.get().normalized();
-//    assert_approx(0.6103515625 , actual.significand);
-//    assert_eq(16L, actual.exponent);
-//  }
+  {
+    VProd prod(100.0);
+    __m256d mask = _mm256_cmp_pd(_mm256_set1_pd(2), _mm256_set1_pd(2), _CMP_EQ_OQ);
+    prod.mul_mask_no_overflow(_mm256_set1_pd(10.0), mask);
+
+    auto actual = prod.get().normalized();
+    assert_eq(LargeExponentFloat(100.0), actual);
+
+    mask = _mm256_cmp_pd(_mm256_set1_pd(2), _mm256_set1_pd(3), _CMP_EQ_OQ);
+    prod.mul_mask_no_overflow(_mm256_set_pd(5.0, 2.0, 10.0, 0.1), mask);
+    actual = prod.get().normalized();
+    assert_approx(0.9765625, actual.significand);
+    assert_eq(10L, actual.exponent);
+
+    mask = _mm256_cmp_pd(_mm256_set_pd(3,2,1,0), _mm256_set1_pd(2), _CMP_EQ_OQ);
+    prod.mul_mask_no_overflow(_mm256_set_pd(2.0, 3.0, 4.0, 5.0), mask);
+    actual = prod.get().normalized();
+    assert_approx(0.6103515625 , actual.significand);
+    assert_eq(16L, actual.exponent);
+  }
 
   cout << "vprod tests passed" << endl;
 }
