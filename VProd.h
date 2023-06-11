@@ -48,7 +48,7 @@ double* new_double_array(int64_t size) {
 
 __m128i emulate_cvt_epi64_epi32(__m256i vec)
 {
-  __m128i low = _mm256_castsi256_si128(vec);          // Extract the low 128 bits
+  __m128i low = _mm256_castsi256_si128(vec);        // Extract the low 128 bits
   __m128i high = _mm256_extractf128_si256(vec, 1);    // Extract the high 128 bits
 
   __m128i low_shifted = _mm_shuffle_epi32(low, 0xD8);  // Shift the low 64-bit values
