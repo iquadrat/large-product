@@ -144,23 +144,13 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
   for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
     __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
-    vprod1.mul_mask(_mm256_sub_pd(u1_vec, x0), mask);
-    vprod2.mul_mask(_mm256_sub_pd(u2_vec, x0), mask);
+    vprod1.mul_mask_no_overflow(_mm256_sub_pd(u1_vec, x0), mask);
+    vprod2.mul_mask_no_overflow(_mm256_sub_pd(u2_vec, x0), mask);
     vj = _mm256_add_epi64(vj, four);
   }
 
   prod1 = vprod1.get();
   prod2 = vprod2.get();
-/*
-  for (int j=skipj; j<skipj + ELEMENTS_PER_LOOP; j++) {
-    if (j == k) {
-      continue;
-    }
-    prod1 = save_mul(prod1, abs(u1 - x[j]));
-    prod2 = save_mul(prod2, abs(u2 - x[j]));
-    cout << j << ": " << prod1 << endl;
-  }
-*/
 
 }
 
