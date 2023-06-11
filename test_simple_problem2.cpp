@@ -315,8 +315,8 @@ void test_complexcomplex() {
 
 void test_all() {
   test_vprod();
-//  test_realreal();
-//  test_complexcomplex();
+  test_realreal();
+  test_complexcomplex();
 }
 
 
