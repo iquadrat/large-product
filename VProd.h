@@ -102,10 +102,7 @@ inline void checkoverflow(__m256d &prod, int64_t &exponent) {
   prod = abs_prod;
 }
 
-inline void checkoverflow(__m256d &prod, __m256i& exponents) {
-  __m256i exponent = extract_and_clear_exponent(prod);
-  exponents = _mm256_add_epi64(exponents, exponent);
-}
+
 
 __m256d mul_diff(__m256d prod, __m256d u, __m256d x) {
   return _mm256_mul_pd(prod, _mm256_sub_pd(u, x));
@@ -117,11 +114,6 @@ __m256d save_mul(__m256d prod1, __m256d prod2, int64_t& exponent) {
   return prod; 
 }
 
-__m256d save_mul(__m256d prod1, __m256d prod2, __m256i& exponents) {
-  __m256d prod = _mm256_mul_pd(prod1, prod2);
-  checkoverflow(prod, exponents);
-  return prod;
-}
 
 
 
@@ -224,7 +216,18 @@ class VProd {
     __m256i exponent;
     int64_t exponent_bias_count;
 
-  public:  
+    static void normalize_exponent(__m256d &prod, __m256i& exponent) {
+      __m256i delta_exponent = extract_and_clear_exponent(prod);
+      exponent = _mm256_add_epi64(exponent, delta_exponent);
+    }
+
+    static __m256d save_mul(__m256d prod1, __m256d prod2, __m256i& exponents) {
+      __m256d prod = _mm256_mul_pd(prod1, prod2);
+      normalize_exponent(prod, exponents);
+      return prod;
+    }
+
+public:
     VProd(double fraction = 1.0, int64_t exponent = 0):
       prod1(_mm256_set_pd(1, 1, 1, fraction)),
       prod2(_MM256_ONE),
@@ -242,15 +245,19 @@ class VProd {
       prod4 = _mm256_mul_pd(prod4, mul4);
     }
 
-    void mul_mask_no_overflow(__m256d mul1, __m256d mask1) {
-      prod1 = _mm256_blendv_pd(_mm256_mul_pd(prod1, mul1), prod1, mask1);
+    void mul_mask_no_overflow(__m256d mul, __m256d mask) {
+      prod1 = _mm256_blendv_pd(_mm256_mul_pd(prod1, mul), prod1, mask);
     }
 
-  void check_overflow() {
-      ::checkoverflow(prod1, exponent);
-      ::checkoverflow(prod2, exponent);
-      ::checkoverflow(prod3, exponent);
-      ::checkoverflow(prod4, exponent);
+    void check_overflow() {
+      normalize_exponent();
+    }
+
+    void normalize_exponent() {
+      normalize_exponent(prod1, exponent);
+      normalize_exponent(prod2, exponent);
+      normalize_exponent(prod3, exponent);
+      normalize_exponent(prod4, exponent);
       exponent_bias_count += 16;
     }
     
@@ -265,9 +272,9 @@ class VProd {
     LargeExponentFloat get() const {
       int64_t combined_exponent = horizontal_sum(exponent) - EXPONENT_BIAS * exponent_bias_count;
 
-      __m256d prod12 = save_mul(prod1, prod2, combined_exponent);
-      __m256d prod34 = save_mul(prod3, prod4, combined_exponent);
-      __m256d prod = save_mul(prod12, prod34, combined_exponent);
+      __m256d prod12 = ::save_mul(prod1, prod2, combined_exponent);
+      __m256d prod34 = ::save_mul(prod3, prod4, combined_exponent);
+      __m256d prod = ::save_mul(prod12, prod34, combined_exponent);
 
       double significand = horizontal_product(prod);
       return LargeExponentFloat(significand, combined_exponent);
