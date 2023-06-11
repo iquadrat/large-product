@@ -84,6 +84,19 @@ class stopwatch {
 };
 
 
+constexpr long int exponent_low_high=511;
+
+inline void checkoverflow(double &prod, long int &exponent) {
+  const double toohigh=pow(2,exponent_low_high);
+  const double toolow=pow(2,-exponent_low_high);
+  if (prod>toohigh) {
+    prod*=toolow;
+    exponent += 511;
+  } else if (prod<toolow)  {
+    prod*=toohigh;
+    exponent -= 511;
+  }
+}
 
 
 // **************************************************************************
@@ -274,16 +287,16 @@ void test_realreal() {
     LargeExponentFloat prod2(0.02, -2 * 511);
     
     prod_realreal(N, 61, 0.0521, 1.213, x, prod1, prod2);
-    prod1.normalize();
-    prod2.normalize();
+    prod1.normalize_exponent();
+    prod2.normalize_exponent();
     assert_approx(0.6536168176 , prod1.significand);
     assert_eq(-1533L - 325, prod1.exponent);
     assert_approx(0.5984865129 , prod2.significand);
     assert_eq(33L, prod2.exponent);
 
     prod_realreal(N, 256, -10.23, 0.021, x, prod1, prod2);
-    prod1.normalize();
-    prod2.normalize();
+    prod1.normalize_exponent();
+    prod2.normalize_exponent();
     assert_approx(0.56747605771 , prod1.significand);
     assert_eq(101 * 511L + 167, prod1.exponent);
     assert_approx(0.50089, prod2.significand);
@@ -309,8 +322,8 @@ void test_complexcomplex() {
     LargeExponentFloat prod2(0.02, -2 * 511);
 
     prod_complexcomplex(N, 2122, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, prod2);
-    prod1.normalize();
-    prod2.normalize();
+    prod1.normalize_exponent();
+    prod2.normalize_exponent();
 
     assert_approx(0.632441, prod1.significand);
     assert_eq(64905L, prod1.exponent);

@@ -42,9 +42,10 @@ double extract_double(__m256d v, int index) {
     return x[index];
 }
 
-
 double* new_double_array(int64_t size) {
-  return static_cast<double*>(_mm_malloc(sizeof(double) * size, 32));
+  // round up size to be a multiple of 4
+  int64_t rounded_size = (size + 3) & ~3;
+  return static_cast<double*>(_mm_malloc(sizeof(double) * rounded_size, 64));
 }
 
 __m256i extract_and_clear_exponent(__m256d& v) {
@@ -58,64 +59,10 @@ __m256i extract_and_clear_exponent(__m256d& v) {
     return exponent;
 }
 
-
-constexpr long int exponent_low_high=511;
-
-inline void checkoverflow(double &prod, long int &exponent) {
-  const double toohigh=pow(2,exponent_low_high);
-  const double toolow=pow(2,-exponent_low_high);
-  if (prod>toohigh) {
-    prod*=toolow;
-    exponent += 511;
-  } else if (prod<toolow)  {
-    prod*=toohigh;
-    exponent -= 511;
-  }
-}
-
 __m256d abs(__m256d a) {
   const __m256d mask = _mm256_set1_pd(-0.);
   return _mm256_andnot_pd(mask, a); 
 }
-
-inline void checkoverflow(__m256d &prod, int64_t &exponent) {
-  const __m256d toohigh = _mm256_set1_pd(pow(2,exponent_low_high));
-  double p = pow(2,-exponent_low_high);
-  const __m256d toolow  = _mm256_set1_pd(p);
-  
-  __m256d abs_prod = abs(prod);
-  __m256d high_mask = _mm256_cmp_pd(abs_prod, toohigh, _CMP_GE_OS);
-  __m256d low_mask  = _mm256_cmp_pd(abs_prod, toolow,  _CMP_LE_OS);
-
-  if (!_mm256_testz_pd(high_mask, high_mask)) [[unlikely]] {
-    int high_mask_bits = _mm256_movemask_pd(high_mask);
-    exponent += _mm_popcnt_u32(high_mask_bits) * 511;
-    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toolow), high_mask);  
-  }
-  
-  if (!_mm256_testz_pd(low_mask, low_mask)) [[unlikely]] {
-    int low_mask_bits  = _mm256_movemask_pd(low_mask);
-    exponent -= _mm_popcnt_u32(low_mask_bits) * 511;
-    abs_prod = _mm256_blendv_pd(abs_prod, _mm256_mul_pd(abs_prod, toohigh), low_mask);
-  }
-  
-  prod = abs_prod;
-}
-
-
-
-__m256d mul_diff(__m256d prod, __m256d u, __m256d x) {
-  return _mm256_mul_pd(prod, _mm256_sub_pd(u, x));
-}
-
-__m256d save_mul(__m256d prod1, __m256d prod2, int64_t& exponent) {
-  __m256d prod = _mm256_mul_pd(prod1, prod2);
-  checkoverflow(prod, exponent);
-  return prod; 
-}
-
-
-
 
 int64_t horizontal_sum(__m256i v) {
   __m256i hi = _mm256_unpackhi_epi64(v, v);
@@ -123,9 +70,7 @@ int64_t horizontal_sum(__m256i v) {
   return _mm256_extract_epi64(sumlohi, 0) + _mm256_extract_epi64(sumlohi, 2);
 }
 
-
-static const __m256d _MM256_ONE = _mm256_set1_pd(1);  
-
+static const __m256d M256D_ONE = _mm256_set1_pd(1);
 
 constexpr const int EXPONENT_BIAS = 1023;
 
@@ -157,7 +102,7 @@ class LargeExponentFloat {
       significand(f.significand),
       exponent(f.exponent) {}
 
-  void normalize() {
+  void normalize_exponent() {
     int delta_exponent;
     double mantissa = std::frexp(significand, &delta_exponent);
     significand= std::ldexp(mantissa, 0);
@@ -166,7 +111,7 @@ class LargeExponentFloat {
 
   LargeExponentFloat normalized() const {
     LargeExponentFloat f(*this);
-    f.normalize();
+    f.normalize_exponent();
     return f;
   }
 
@@ -183,26 +128,17 @@ std::ostream& operator<<(std::ostream& os, const LargeExponentFloat& v_raw) {
   return os << v.significand << " * 2^ " << v.exponent;
 }
 
-void checkoverflow(LargeExponentFloat& f) {
-  const double toohigh = pow(2,exponent_low_high);
-  const double toolow = pow(2,-exponent_low_high);
-  if (f.significand>toohigh) {
-    f.significand *= toolow;
-    f.exponent += exponent_low_high;
-  } else if (f.significand<toolow)  {
-    f.significand *= toohigh;
-    f.exponent -= exponent_low_high;
-  }
-}
-
 inline LargeExponentFloat save_mul(const LargeExponentFloat& a, const LargeExponentFloat& b) {
-  double prod = a.significand * b.significand;
-  int64_t exponent = a.exponent + b.exponent;
-  LargeExponentFloat result(prod, exponent);
-  checkoverflow(result);
-  return result;
-}
+  LargeExponentFloat a_normalized = a;
+  a_normalized.normalize_exponent();
 
+  LargeExponentFloat b_normalized = b;
+  b_normalized.normalize_exponent();
+
+  double prod = a_normalized.significand * b_normalized.significand;
+  int64_t exponent = a_normalized.exponent + b_normalized.exponent;
+  return LargeExponentFloat(prod, exponent);
+}
 
 class VProd {
   private:
@@ -231,9 +167,9 @@ class VProd {
 public:
     VProd(double fraction = 1.0, int64_t exponent = 0):
       prod1(_mm256_set_pd(1, 1, 1, fraction)),
-      prod2(_MM256_ONE),
-      prod3(_MM256_ONE),
-      prod4(_MM256_ONE),
+      prod2(M256D_ONE),
+      prod3(M256D_ONE),
+      prod4(M256D_ONE),
       exponent(_mm256_set_epi64x(0, 0, 0, exponent)),
       exponent_bias_count(0)
     {
@@ -344,17 +280,17 @@ inline void test_vprod() {
 
   {
     LargeExponentFloat f5(1.0, 50);
-    f5.normalize();
+    f5.normalize_exponent();
     assert_eq(0.5, f5.significand);
     assert_eq(51L, f5.exponent);
 
     LargeExponentFloat f4(-1536.0, -100);
-    f4.normalize();
+    f4.normalize_exponent();
     assert_eq(-0.75, f4.significand);
     assert_eq(-89L, f4.exponent);
 
     LargeExponentFloat f6(9.56257e-99, -1533);
-    f6.normalize();
+    f6.normalize_exponent();
     assert_approx(0.6536168176, f6.significand);
     assert_eq(-1533L -325 , f6.exponent);
 
@@ -368,16 +304,16 @@ inline void test_vprod() {
 
   {
     VProd prod(2.0); // 2
-    prod.mul_no_overflow(_mm256_set_pd(2.0, 3.0, 5.0, 10.0), _MM256_ONE, _MM256_ONE, _MM256_ONE);  // 2 * 2 * 3 * 5 * 10 = 600
+    prod.mul_no_overflow(_mm256_set_pd(2.0, 3.0, 5.0, 10.0), M256D_ONE, M256D_ONE, M256D_ONE);  // 2 * 2 * 3 * 5 * 10 = 600
     auto actual = prod.get();
     assert_eq(LargeExponentFloat(600.), actual);
 
-    prod.mul_no_overflow(_MM256_ONE, _mm256_set_pd(1e100, -1e50, 1e25, 1e25), _MM256_ONE, _MM256_ONE);
+    prod.mul_no_overflow(M256D_ONE, _mm256_set_pd(1e100, -1e50, 1e25, 1e25), M256D_ONE, M256D_ONE);
     actual = prod.get().normalized();
     assert_approx(0.76548066825 , actual.significand);
     assert_eq(511L + 163L, actual.exponent);
 
-    prod.mul_no_overflow(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200), _MM256_ONE, _MM256_ONE, _MM256_ONE);
+    prod.mul_no_overflow(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200), M256D_ONE, M256D_ONE, M256D_ONE);
     prod.check_overflow();
 
     actual = prod.get().normalized();
@@ -385,7 +321,7 @@ inline void test_vprod() {
     assert_eq(1022L + 233L, actual.exponent);
 
     VProd prod2(1.0);
-    prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120), _MM256_ONE, _MM256_ONE, _MM256_ONE);
+    prod2.mul_no_overflow(_mm256_set_pd(-1e-80, 1e-75, 1e-90, 1e-120), M256D_ONE, M256D_ONE, M256D_ONE);
   }
 
   {
