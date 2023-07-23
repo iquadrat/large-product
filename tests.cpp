@@ -37,6 +37,8 @@ TEST(AvxUtils, horizontal_product) {
 TEST(LargeProduct, extract_and_clear_exponent) {
   __m256d v = _mm256_set_pd(2, 1e20, 1e-20, -5e189);
 
+  const int EXPONENT_BIAS = 1023;
+
 #ifdef __AVX2__
   __m256i exp = extract_and_clear_exponent(v);
   ASSERT_EQ(EXPONENT_BIAS +  1LL, _mm256_extract_epi64(exp, 3));

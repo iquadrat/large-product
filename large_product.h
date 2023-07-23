@@ -110,8 +110,6 @@ inline double horizontal_product(__m256d vec) {
 
 static const __m256d M256D_ONE = _mm256_set1_pd(1);
 
-constexpr const int EXPONENT_BIAS = 1023;
-
 /**
  * Floating point with 52-bit significant and 64bit exponent.
  *
@@ -194,6 +192,8 @@ inline LargeExponentFloat save_mul(const LargeExponentFloat& a, const LargeExpon
  */
 class LargeProduct {
   private:
+    constexpr static int EXPONENT_BIAS = 1023;
+
     __m256d prod1;
     __m256d prod2;
     __m256d prod3;
@@ -216,11 +216,6 @@ class LargeProduct {
     static __m256d save_mul(__m256d prod1, __m256d prod2, __exponent_t& exponents) {
       __m256d prod = _mm256_mul_pd(prod1, prod2);
       normalize_exponent(prod, exponents);
-#ifdef __AVX2__
-      exponents = _mm256_sub_epi64(exponents, _mm256_set1_epi64x(EXPONENT_BIAS));
-#else
-      exponents = _mm_sub_epi32(exponents, _mm_set1_epi32(EXPONENT_BIAS));
-#endif
       return prod;
     }
 
@@ -282,6 +277,8 @@ public:
       prod2 = save_mul(prod2, other.prod2, exponent);
       prod3 = save_mul(prod3, other.prod3, exponent);
       prod4 = save_mul(prod4, other.prod4, exponent);
+      exponent_bias_count += 16;
+
       exponent += other.exponent;
       exponent_bias_count += other.exponent_bias_count;
     }
@@ -293,7 +290,7 @@ public:
       __m256d prod34 = save_mul(prod3, prod4, local_exponent);
       __m256d prod = save_mul(prod12, prod34, local_exponent);
 
-      int64_t combined_exponent = horizontal_sum(local_exponent) - EXPONENT_BIAS * exponent_bias_count;
+      int64_t combined_exponent = horizontal_sum(local_exponent) - EXPONENT_BIAS * (exponent_bias_count + 12);
       double significand = horizontal_product(prod);
       return LargeExponentFloat(significand, combined_exponent);
     }
