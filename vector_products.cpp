@@ -6,24 +6,11 @@ inline double sqr(const double x) {
   return x*x;
 }
 
-inline void checkoverflow(double &prod, long int &exponent) {
-  constexpr long int exponent_low_high=511;
-  const double toohigh=pow(2,exponent_low_high);
-  const double toolow=pow(2,-exponent_low_high);
-  if (prod>toohigh) {
-    prod*=toolow;
-    exponent += 511;
-  } else if (prod<toolow)  {
-    prod*=toohigh;
-    exponent -= 511;
-  }
-}
-
 __m256d sqr(__m256d v) {
   return _mm256_mul_pd(v,v);
 }
 
-constexpr const int64_t MULS_PER_EXPONENT_EXTRACTION = 256;
+constexpr const int64_t MULS_PER_EXPONENT_EXTRACTION = 16;
 
 void prod_realreal(
         const long int N,
