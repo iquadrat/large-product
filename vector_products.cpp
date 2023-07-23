@@ -42,13 +42,13 @@ void prod_realreal(
       const __m256d x2 = _mm256_load_pd(&x[j +  8]);
       const __m256d x3 = _mm256_load_pd(&x[j + 12]);
 
-      vprod1.mul_no_overflow(
+      vprod1.mul_no_overflow4(
               _mm256_sub_pd(u1_vec, x0),
               _mm256_sub_pd(u1_vec, x1),
               _mm256_sub_pd(u1_vec, x2),
               _mm256_sub_pd(u1_vec, x3)
       );
-      vprod2.mul_no_overflow(
+      vprod2.mul_no_overflow4(
               _mm256_sub_pd(u2_vec, x0),
               _mm256_sub_pd(u2_vec, x1),
               _mm256_sub_pd(u2_vec, x2),
@@ -167,13 +167,13 @@ void prod_complexreal(
     const __m256d x2 = _mm256_load_pd(&x[j +  8]);
     const __m256d x3 = _mm256_load_pd(&x[j + 12]);
 
-    vprod1.mul_no_overflow(
+    vprod1.mul_no_overflow4(
             sqr_diff1(x0, v1_sqr, u1_vec),
             sqr_diff1(x1, v1_sqr, u1_vec),
             sqr_diff1(x2, v1_sqr, u1_vec),
             sqr_diff1(x3, v1_sqr, u1_vec)
     );
-    vprod2.mul_no_overflow(
+    vprod2.mul_no_overflow4(
             sqr_diff1(x0, v2_sqr, u2_vec),
             sqr_diff1(x1, v2_sqr, u2_vec),
             sqr_diff1(x2, v2_sqr, u2_vec),
@@ -254,13 +254,13 @@ void prod_complexcomplex(
       const __m256d y2 = _mm256_load_pd(&y[j +  8]);
       const __m256d y3 = _mm256_load_pd(&y[j + 12]);
 
-      vprod1.mul_no_overflow(
+      vprod1.mul_no_overflow4(
               sqr_diff2(x0, y0, u1_vec, v1_vec),
               sqr_diff2(x1, y1, u1_vec, v1_vec),
               sqr_diff2(x2, y2, u1_vec, v1_vec),
               sqr_diff2(x3, y3, u1_vec, v1_vec)
       );
-      vprod2.mul_no_overflow(
+      vprod2.mul_no_overflow4(
               sqr_diff2(x0, y0, u2_vec, v2_vec),
               sqr_diff2(x1, y1, u2_vec, v2_vec),
               sqr_diff2(x2, y2, u2_vec, v2_vec),
