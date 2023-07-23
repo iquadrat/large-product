@@ -161,7 +161,6 @@ void prod_complexreal(
 
   const int64_t ELEMENTS_PER_LOOP = 4 * 4;
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
-  __m256d ZERO = _mm256_setzero_pd();
 
   LargeProduct vprod1(prod1);
   LargeProduct vprod2(prod2);
@@ -173,7 +172,6 @@ void prod_complexreal(
 
   const int64_t lastj = N & (-ELEMENTS_PER_LOOP);
 
-  // prod of u-x[j] for all j!=k
   for (int64_t j=0; j<lastj; j += ELEMENTS_PER_LOOP) [[likely]] {
     const __m256d x0 = _mm256_load_pd(&x[j +  0]);
     const __m256d x1 = _mm256_load_pd(&x[j +  4]);
@@ -255,7 +253,6 @@ void prod_complexcomplex(
   const int64_t skipj = k & (-ELEMENTS_PER_LOOP);
   const int64_t lastj = N & (-ELEMENTS_PER_LOOP);
 
-  // prod of u-x[j] for all j!=k
   for (int64_t j=0; j<lastj; j += ELEMENTS_PER_LOOP) [[likely]] {
     if (j != skipj) [[likely]] {
       const __m256d x0 = _mm256_load_pd(&x[j +  0]);
