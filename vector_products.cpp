@@ -120,21 +120,19 @@ void prod_realreal(
 
 void prod_realcomplex(
         const long int N,
-        const double u,
-        const double u0,
+        const double u1,
+        const double u2,
         const double* x,
         const double* y,
-        double &prod,
-        long int &exponent,
-        double &prod0,
-        long int &exponent0
+        LargeExponentFloat& prod1,
+        LargeExponentFloat& prod2
 ) {
 
   for (int j=0; j<N; j++) {
-    prod*=sqr(u-x[j])+sqr(y[j]);
-    prod0*=sqr(u0-x[j])+sqr(y[j]);
-    checkoverflow(prod,exponent);
-    checkoverflow(prod0,exponent0);
+    prod1.significand *= sqr(u1-x[j])+sqr(y[j]);
+    prod2.significand *= sqr(u2-x[j])+sqr(y[j]);
+    checkoverflow(prod1.significand,prod1.exponent);
+    checkoverflow(prod2.significand,prod2.exponent);
   }
 
 }
@@ -142,23 +140,21 @@ void prod_realcomplex(
 
 void prod_complexreal(
         const long int N,
-        const double u,
-        const double u0,
-        const double v,
-        const double v0,
+        const double u1,
+        const double u2,
+        const double v1,
+        const double v2,
         const double* x,
-        double &prod,
-        long int &exponent,
-        double &prod0,
-        long int &exponent0
+        LargeExponentFloat& prod1,
+        LargeExponentFloat& prod2
 ) {
-  const double v2=sqr(v);
-  const double v02=sqr(v0);
+  const double v1_sqr=sqr(v1);
+  const double v2_sqr=sqr(v2);
   for (int j=0; j<N; j++) {
-    prod*=sqr(u-x[j])+v2;
-    prod0*=sqr(u0-x[j])+v02;
-    checkoverflow(prod,exponent);
-    checkoverflow(prod0,exponent0);
+    prod1.significand *= sqr(u1-x[j])+v1_sqr;
+    prod2.significand *= sqr(u2-x[j])+v2_sqr;
+    checkoverflow(prod1.significand,prod1.exponent);
+    checkoverflow(prod2.significand,prod2.exponent);
   }
 }
 
@@ -180,8 +176,8 @@ void prod_complexcomplex(
   assert(k >=0 && k < N);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
-  LargeProduct vprod1(prod1.significand, prod1.exponent);
-  LargeProduct vprod2(prod2.significand, prod2.exponent);
+  LargeProduct vprod1(prod1);
+  LargeProduct vprod2(prod2);
 
   const __m256d u1_vec = _mm256_set1_pd(u1);
   const __m256d u2_vec = _mm256_set1_pd(u2);

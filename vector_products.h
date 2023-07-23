@@ -29,27 +29,23 @@ void prod_realreal(
 
 void prod_realcomplex(
         const long int N,
-        const double u,
-        const double u0,
+        const double u1,
+        const double u2,
         const double* x,
         const double* y,
-        double &prod,
-        long int &exponent,
-        double &prod0,
-        long int &exponent0
+        LargeExponentFloat& prod1,
+        LargeExponentFloat& prod2
 );
 
 void prod_complexreal(
         const long int N,
-        const double u,
-        const double u0,
-        const double v,
-        const double v0,
+        const double u1,
+        const double u2,
+        const double v1,
+        const double v2,
         const double* x,
-        double &prod,
-        long int &exponent,
-        double &prod0,
-        long int &exponent0
+        LargeExponentFloat& prod1,
+        LargeExponentFloat& prod2
 );
 
 

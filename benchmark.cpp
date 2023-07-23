@@ -1,6 +1,9 @@
 #include <random>
+#include <ctime>
 
-#include "large_product.h
+#include "vector_products.h"
+
+using namespace std;
 
 static std::mt19937_64 gen;
 static std::uniform_real_distribution<double> distu(0.0, 1.0);
@@ -64,7 +67,6 @@ public:
 
 
 int main(int argc, char *argv[]) {
-  test_all();
   gen = std::mt19937_64();
 
   if (argc!=3) {
@@ -99,7 +101,7 @@ int main(int argc, char *argv[]) {
   timing.reset();
 
   prod=LargeExponentFloat(1.0);
-  //prod0=LargeExponentFloat(1.0);
+  prod0=LargeExponentFloat(1.0);
 
   timing.start();
   for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
@@ -114,26 +116,26 @@ int main(int argc, char *argv[]) {
   timing.reset();
 
   prod=LargeExponentFloat(1.0);
-  //prod0=LargeExponentFloat(1.0);
+  prod0=LargeExponentFloat(1.0);
   timing.start();
   for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
       double u=distu(gen)*2-1;
       double u0=distu(gen)*2-1;
-      prod_realcomplex(N,u,u0,x,y,prod.significand,prod.exponent,prod0.significand,prod0.exponent);
+      prod_realcomplex(N,u,u0,x,y,prod,prod0);
     }
   timing.stop();
   cout << "prod_realcomplex: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
   timing.reset();
 
   prod=LargeExponentFloat(1.0);
-  //prod0=LargeExponentFloat(1.0);
+  prod0=LargeExponentFloat(1.0);
   timing.start();
   for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
       double u=distu(gen)*2-1;
       double v=distu(gen)*2-1;
       double u0=distu(gen)*2-1;
       double v0=distu(gen)*2-1;
-      prod_complexreal(N,u,v,u0,v0,x,prod.significand,prod.exponent,prod0.significand,prod0.exponent);
+      prod_complexreal(N,u,v,u0,v0,x,prod,prod0);
     }
   timing.stop();
   cout << "prod_complexreal: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";

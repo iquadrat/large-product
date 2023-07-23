@@ -1,6 +1,10 @@
-test_simple_problem
-test_simple_problem2
 *.s
 a.out
 *~
 callgrind.out.*
+/CMakeCache.txt
+*.cmake
+*.a
+tests
+benchmark
+Makefile
