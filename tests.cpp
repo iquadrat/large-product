@@ -227,6 +227,98 @@ TEST(prod_complexcomplex, odd_N) {
   delete[] y;
 }
 
+TEST(prod_realcomplex, nice_N) {
+  constexpr int64_t N = 1024;
+  double* x = new_double_array(N);
+  double* y = new_double_array(N);
+  std::mt19937_64 gen(11);
+  init_random_positions(gen,N,-1,1,x);
+  init_random_positions(gen,N,-1,1,y);
+
+  LargeExponentFloat prod1(5.6);
+  LargeExponentFloat prod2(0.23);
+
+  prod_realcomplex(N, 0.4434, -0.1234, x, y, prod1, prod2);
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+
+  ASSERT_NEAR(0.86773718708223435, prod1.significand, 1e-8);
+  ASSERT_EQ(-876L, prod1.exponent);
+  ASSERT_NEAR(0.70912090279846229, prod2.significand, 1e-6);
+  ASSERT_EQ(-1114L, prod2.exponent);
+
+  delete[] x;
+  delete[] y;
+}
+
+TEST(prod_realcomplex, odd_N) {
+  constexpr int64_t N = 999;
+  double* x = new_double_array(N);
+  double* y = new_double_array(N);
+  std::mt19937_64 gen(11);
+  init_random_positions(gen,N,-1,1,x);
+  init_random_positions(gen,N,-1,1,y);
+
+  LargeExponentFloat prod1(5.6);
+  LargeExponentFloat prod2(0.23);
+
+  prod_realcomplex(N, 50.4434, -0.001234, x, y, prod1, prod2);
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+
+  ASSERT_NEAR(0.87622155391709977, prod1.significand, 1e-8);
+  ASSERT_EQ(11305L, prod1.exponent);
+  ASSERT_NEAR(0.88896091384513432, prod2.significand, 1e-6);
+  ASSERT_EQ(-1086L, prod2.exponent);
+
+  delete[] x;
+  delete[] y;
+}
+
+TEST(prod_complexreal, nice_N) {
+  constexpr int64_t N = 1024;
+  double* x = new_double_array(N);
+  std::mt19937_64 gen(11);
+  init_random_positions(gen,N,-1,1,x);
+
+  LargeExponentFloat prod1(5.6);
+  LargeExponentFloat prod2(0.23);
+
+  prod_complexreal(N, 0.481, -1.22, 120.051, 0.683, x, prod1, prod2);
+
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+
+  ASSERT_NEAR(0.54009349550881158, prod1.significand, 1e-8);
+  ASSERT_EQ(14150L, prod1.exponent);
+  ASSERT_NEAR(0.50290573150432916, prod2.significand, 1e-8);
+  ASSERT_EQ(868L, prod2.exponent);
+
+  delete[] x;
+}
+
+TEST(prod_complexreal, odd_N) {
+  constexpr int64_t N = 999;
+  double* x = new_double_array(N);
+  std::mt19937_64 gen(11);
+  init_random_positions(gen,N,-1,1,x);
+
+  LargeExponentFloat prod1(5.6);
+  LargeExponentFloat prod2(0.23);
+
+  prod_complexreal(N, 0.481, -1.22, 1.051, -10.00001, x, prod1, prod2);
+
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+
+  ASSERT_NEAR(0.77449635212666623, prod1.significand, 1e-8);
+  ASSERT_EQ(655L, prod1.exponent);
+  ASSERT_NEAR(0.77864037280040022, prod2.significand, 1e-8);
+  ASSERT_EQ(6661L, prod2.exponent);
+
+  delete[] x;
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
