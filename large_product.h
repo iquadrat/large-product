@@ -177,11 +177,27 @@ public:
     {
     }
 
-    void mul_no_overflow(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {
+    void mul_no_overflow1(__m256d mul1) {
       prod1 = _mm256_mul_pd(prod1, mul1);
+    }
+
+    void mul_no_overflow2(__m256d mul2) {
       prod2 = _mm256_mul_pd(prod2, mul2);
+    }
+
+    void mul_no_overflow3(__m256d mul3) {
       prod3 = _mm256_mul_pd(prod3, mul3);
+    }
+
+    void mul_no_overflow4(__m256d mul4) {
       prod4 = _mm256_mul_pd(prod4, mul4);
+    }
+
+    void mul_no_overflow(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {
+      mul_no_overflow1(mul1);
+      mul_no_overflow2(mul2);
+      mul_no_overflow3(mul3);
+      mul_no_overflow4(mul4);
     }
 
     void mul_mask_no_overflow(__m256d mul, __m256d mask) {

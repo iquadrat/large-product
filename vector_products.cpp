@@ -23,6 +23,8 @@ __m256d sqr(__m256d v) {
   return _mm256_mul_pd(v,v);
 }
 
+constexpr const int64_t MULS_PER_EXPONENT_EXTRACTION = 256;
+
 void prod_realreal(
         const long int N,
         const long int k,
@@ -67,7 +69,7 @@ void prod_realreal(
       );
     }
 
-    if ((j / ELEMENTS_PER_LOOP) % 16 == 0)  {
+    if ((j / ELEMENTS_PER_LOOP) % MULS_PER_EXPONENT_EXTRACTION == 0)  {
       vprod1.normalize_exponent();
       vprod2.normalize_exponent();
     }
@@ -191,7 +193,7 @@ void prod_complexreal(
             sqr_diff1(x3, v2_sqr, u2_vec)
     );
 
-    if ((j / ELEMENTS_PER_LOOP) % 16 == 0) {
+    if ((j / ELEMENTS_PER_LOOP) % MULS_PER_EXPONENT_EXTRACTION == 0) {
       vprod1.normalize_exponent();
       vprod2.normalize_exponent();
     }
@@ -279,7 +281,7 @@ void prod_complexcomplex(
       );
     }
 
-    if ((j / ELEMENTS_PER_LOOP) % 16 == 0) {
+    if ((j / ELEMENTS_PER_LOOP) % MULS_PER_EXPONENT_EXTRACTION == 0) {
       vprod1.normalize_exponent();
       vprod2.normalize_exponent();
     }

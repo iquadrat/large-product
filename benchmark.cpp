@@ -65,6 +65,7 @@ public:
 
 // **************************************************************************
 
+constexpr const int REPETITIONS = 5;
 
 int main(int argc, char *argv[]) {
   gen = std::mt19937_64();
@@ -85,60 +86,78 @@ int main(int argc, char *argv[]) {
   init_random_positions(N,-1,1,x);
   init_random_positions(N,-1,1,y);
 
-  LargeExponentFloat prod(1.0);
-  LargeExponentFloat prod0(1.0);
 
   stopwatch timing;
 
-  timing.start();
-  for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
-      double u=distu(gen)*2-1;
-      double u0=distu(gen)*2-1;
-      prod_realreal(N,k,u,u0,x,prod,prod0);
-    }
-  timing.stop();
-  cout << "prod_realreal: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
-  timing.reset();
+  for(int rep = 0; rep < REPETITIONS; ++rep) {
+    LargeExponentFloat prod(1.0);
+    LargeExponentFloat prod0(1.0);
 
-  prod=LargeExponentFloat(1.0);
-  prod0=LargeExponentFloat(1.0);
+    timing.start();
+    for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
+        double u=distu(gen)*2-1;
+        double u0=distu(gen)*2-1;
+        prod_realreal(N,k,u,u0,x,prod,prod0);
+      }
+    timing.stop();
+    cout << "prod_realreal: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+    timing.reset();
+  }
 
-  timing.start();
-  for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
-      double u=distu(gen)*2-1;
-      double v=distu(gen)*2-1;
-      double u0=distu(gen)*2-1;
-      double v0=distu(gen)*2-1;
-      prod_complexcomplex(N,k,u,u0,v,v0,x,y,prod,prod0);
-    }
-  timing.stop();
-  cout << "prod_complexcomplex: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
-  timing.reset();
+  for(int rep = 0; rep < REPETITIONS; ++rep) {
+    LargeExponentFloat prod(1.0);
+    LargeExponentFloat prod0(1.0);
 
-  prod=LargeExponentFloat(1.0);
-  prod0=LargeExponentFloat(1.0);
-  timing.start();
-  for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
-      double u=distu(gen)*2-1;
-      double u0=distu(gen)*2-1;
-      prod_realcomplex(N,u,u0,x,y,prod,prod0);
-    }
-  timing.stop();
-  cout << "prod_realcomplex: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
-  timing.reset();
+    timing.start();
+    for (long int i = 0; i < M; i++)
+      for (long int k = 0; k < N; k++) {
+        double u = distu(gen) * 2 - 1;
+        double v = distu(gen) * 2 - 1;
+        double u0 = distu(gen) * 2 - 1;
+        double v0 = distu(gen) * 2 - 1;
+        prod_complexcomplex(N, k, u, u0, v, v0, x, y, prod, prod0);
+      }
+    timing.stop();
+    cout << "prod_complexcomplex: prod=" << prod.significand / prod0.significand << " exponent="
+         << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+    timing.reset();
+  }
 
-  prod=LargeExponentFloat(1.0);
-  prod0=LargeExponentFloat(1.0);
-  timing.start();
-  for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
-      double u=distu(gen)*2-1;
-      double v=distu(gen)*2-1;
-      double u0=distu(gen)*2-1;
-      double v0=distu(gen)*2-1;
-      prod_complexreal(N,u,v,u0,v0,x,prod,prod0);
-    }
-  timing.stop();
-  cout << "prod_complexreal: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+  for(int rep = 0; rep < REPETITIONS; ++rep) {
+    LargeExponentFloat prod(1.0);
+    LargeExponentFloat prod0(1.0);
+
+    timing.start();
+    for (long int i = 0; i < M; i++)
+      for (long int k = 0; k < N; k++) {
+        double u = distu(gen) * 2 - 1;
+        double u0 = distu(gen) * 2 - 1;
+        prod_realcomplex(N, u, u0, x, y, prod, prod0);
+      }
+    timing.stop();
+    cout << "prod_realcomplex: prod=" << prod.significand / prod0.significand << " exponent="
+         << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+    timing.reset();
+  }
+
+  for(int rep = 0; rep < REPETITIONS; ++rep) {
+    LargeExponentFloat prod(1.0);
+    LargeExponentFloat prod0(1.0);
+
+    timing.start();
+    for (long int i = 0; i < M; i++)
+      for (long int k = 0; k < N; k++) {
+        double u = distu(gen) * 2 - 1;
+        double v = distu(gen) * 2 - 1;
+        double u0 = distu(gen) * 2 - 1;
+        double v0 = distu(gen) * 2 - 1;
+        prod_complexreal(N, u, v, u0, v0, x, prod, prod0);
+      }
+    timing.stop();
+    cout << "prod_complexreal: prod=" << prod.significand / prod0.significand << " exponent="
+         << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+    timing.reset();
+  }
 
   delete[] x;
   delete[] y;
