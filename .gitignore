@@ -9,3 +9,4 @@ tests
 benchmark
 Makefile
 build/*
+.idea
