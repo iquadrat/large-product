@@ -1,4 +1,5 @@
 #include "large_product.h"
+#include "vector_products.h"
 
 #include <iostream>
 #include "gtest/gtest.h"
@@ -98,6 +99,132 @@ TEST(LargeProduct, mul_mask_no_overflow) {
   actual = prod.get().normalized();
   ASSERT_DOUBLE_EQ(0.6103515625 , actual.significand);
   ASSERT_EQ(16L, actual.exponent);
+}
+
+// fills array x with random values in (a,b)
+void init_random_positions(std::mt19937_64& gen, const long int N, const double a, const double b, double * x) {
+  std::uniform_real_distribution<double> distu(0.0, 1.0);
+  for (int j=0; j<N; j++) {
+    x[j]=distu(gen)*(b-a)+a;
+  }
+}
+
+TEST(prod_realreal, nice_N) {
+  constexpr int64_t N = 16000;
+  double* x = new_double_array(N);
+  std::mt19937_64 gen(42);
+  init_random_positions(gen,N,-1,1,x);
+
+  LargeExponentFloat prod1(7.1, 42 * 511);
+  LargeExponentFloat prod2(0.02, -2 * 511);
+
+  prod_realreal(N, 61, 0.0521, 1.213, x, prod1, prod2);
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+  ASSERT_NEAR(0.65361705616912014, prod1.significand, 1e-8);
+  ASSERT_EQ(-1533L - 325, prod1.exponent);
+  ASSERT_NEAR(0.5984860745221855, prod2.significand, 1e-8);
+  ASSERT_EQ(33L, prod2.exponent);
+
+  prod_realreal(N, 256, -10.23, 0.021, x, prod1, prod2);
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+  ASSERT_NEAR(-0.56747763050434163, prod1.significand, 1e-8);
+  ASSERT_EQ(101 * 511L + 167, prod1.exponent);
+  ASSERT_NEAR(-0.50089024186954312, prod2.significand, 1e-8);
+  ASSERT_EQ(-23262L, prod2.exponent);
+
+  delete[] x;
+}
+
+TEST(prod_realreal, n1000)  {
+  constexpr int64_t N = 1000;
+  double* x = new_double_array(N);
+  std::mt19937_64 gen(42);
+  init_random_positions(gen,N,-1,1,x);
+
+  LargeExponentFloat prod1(7.1, 42 * 511);
+  LargeExponentFloat prod2(0.02, -2 * 511);
+
+  prod_realreal(N, 61, 0.0521, 1.213, x, prod1, prod2);
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+
+  ASSERT_NEAR(0.897775, prod1.significand, 1e-6);
+  ASSERT_EQ(19932L, prod1.exponent);
+  ASSERT_NEAR(0.992222 , prod2.significand, 1e-6);
+  ASSERT_EQ(-932L, prod2.exponent);
+
+  delete[] x;
+}
+
+TEST(prod_realreal, odd_N) {
+  constexpr int64_t N = 999;
+  double* x = new_double_array(N);
+  std::mt19937_64 gen(42);
+  init_random_positions(gen,N,-1,1,x);
+
+  LargeExponentFloat prod1(7.1, 42 * 511);
+  LargeExponentFloat prod2(0.02, -2 * 511);
+
+  prod_realreal(N, 995, 0.0521, 1.213, x, prod1, prod2);
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+
+  ASSERT_NEAR(-0.534702, prod1.significand, 1e-6);
+  ASSERT_EQ(19931L, prod1.exponent);
+  ASSERT_NEAR(0.552373 , prod2.significand, 1e-6);
+  ASSERT_EQ(-931L, prod2.exponent);
+
+  delete[] x;
+}
+
+TEST(prod_complexcomplex, nice_N) {
+  constexpr int64_t N = 16000;
+  double* x = new_double_array(N);
+  double* y = new_double_array(N);
+  std::mt19937_64 gen(42);
+  init_random_positions(gen,N,-1,1,x);
+  init_random_positions(gen,N,-1,1,y);
+
+  LargeExponentFloat prod1(7.1, 42 * 511);
+  LargeExponentFloat prod2(0.02, -2 * 511);
+
+  prod_complexcomplex(N, 2122, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, prod2);
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+
+  ASSERT_NEAR(0.632441, prod1.significand, 1e-6);
+  ASSERT_EQ(64905L, prod1.exponent);
+  ASSERT_NEAR(0.756793, prod2.significand, 1e-6);
+  ASSERT_EQ(-17743L, prod2.exponent);
+
+  delete[] x;
+  delete[] y;
+}
+
+TEST(prod_complexcomplex, odd_N) {
+  constexpr int64_t N = 999;
+  double* x = new_double_array(N);
+  double* y = new_double_array(N);
+  std::mt19937_64 gen(11);
+  init_random_positions(gen,N,-1,1,x);
+  init_random_positions(gen,N,-1,1,y);
+
+  LargeExponentFloat prod1(7.1, 42 * 511);
+  LargeExponentFloat prod2(0.02, -2 * 511);
+
+  prod_complexcomplex(N, 997, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, prod2);
+  prod1.normalize_exponent();
+  prod2.normalize_exponent();
+
+  ASSERT_NEAR(0.518394, prod1.significand, 1e-6);
+  ASSERT_EQ(24163L, prod1.exponent);
+  ASSERT_NEAR(0.742441, prod2.significand, 1e-6);
+  ASSERT_EQ(-2072L, prod2.exponent);
+
+  delete[] x;
+  delete[] y;
 }
 
 int main(int argc, char **argv) {

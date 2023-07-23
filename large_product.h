@@ -6,13 +6,17 @@
 #include <math.h>
 #include <random>
 
-std::ostream& operator<<(std::ostream& os, __m256d v) {
+#ifndef __AVX2__
+#ab "This code needs AVX2 support. Compile with -mavx2"
+#endif
+
+inline std::ostream& operator<<(std::ostream& os, __m256d v) {
   double x[4];
   _mm256_store_pd(x, v);
   return os << "<" <<  x[0] << "," << x[1] << "," << x[2] << "," << x[3]  << ">";
 }
 
-std::ostream& operator<<(std::ostream& os, __m256i v) {
+inline std::ostream& operator<<(std::ostream& os, __m256i v) {
   union {
     __m256i v;
     int64_t a[4];
@@ -21,11 +25,6 @@ std::ostream& operator<<(std::ostream& os, __m256i v) {
   return os << x.a[0] << "," << x.a[1] << "," << x.a[2] << "," << x.a[3]  << ">";
 }
 
-inline double* new_double_array(int64_t size) {
-  // round up size to be a multiple of 4
-  int64_t rounded_size = (size + 3) & ~3;
-  return static_cast<double*>(_mm_malloc(sizeof(double) * rounded_size, 64));
-}
 
 inline __m256i extract_and_clear_exponent(__m256d& v) {
     const __m256d exponent_mask = _mm256_castsi256_pd(_mm256_set1_epi64x(      0x7ff0000000000000ULL));
@@ -48,7 +47,6 @@ inline int64_t horizontal_sum(__m256i v) {
   __m256i sumlohi = _mm256_add_epi64(v, hi);
   return _mm256_extract_epi64(sumlohi, 0) + _mm256_extract_epi64(sumlohi, 2);
 }
-
 
 inline double horizontal_product(__m256d vec) {
   __m128d hi = _mm256_extractf128_pd(vec, 1);
@@ -118,7 +116,7 @@ class LargeExponentFloat {
 
 };
 
-std::ostream& operator<<(std::ostream& os, const LargeExponentFloat& v_raw) {
+inline std::ostream& operator<<(std::ostream& os, const LargeExponentFloat& v_raw) {
   LargeExponentFloat v = v_raw.normalized();
   return os << v.significand << " * 2^ " << v.exponent;
 }
@@ -166,8 +164,11 @@ class LargeProduct {
     }
 
 public:
-    LargeProduct(double fraction = 1.0, int64_t exponent = 0):
-      prod1(_mm256_set_pd(1, 1, 1, fraction)),
+    LargeProduct(const LargeExponentFloat& initial_value):
+      LargeProduct(initial_value.significand, initial_value.exponent) {}
+
+    LargeProduct(double significand = 1.0, int64_t exponent = 0):
+      prod1(_mm256_set_pd(1, 1, 1, significand)),
       prod2(M256D_ONE),
       prod3(M256D_ONE),
       prod4(M256D_ONE),
@@ -217,7 +218,5 @@ public:
     }
 
 };
-
-
 
 #endif
