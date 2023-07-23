@@ -179,19 +179,6 @@ class LargeProduct {
       return prod;
     }
 
-public:
-    LargeProduct(const LargeExponentFloat& initial_value):
-      LargeProduct(initial_value.significand, initial_value.exponent) {}
-
-    LargeProduct(double significand = 1.0, int64_t exponent = 0):
-      prod1(_mm256_set_pd(1, 1, 1, significand)),
-      prod2(M256D_ONE),
-      prod3(M256D_ONE),
-      prod4(M256D_ONE),
-      exponent(_mm_set_epi32(0, 0, 0, exponent))
-    {
-    }
-
     void mul_no_overflow1(__m256d mul1) {
       prod1 = _mm256_mul_pd(prod1, mul1);
     }
@@ -208,14 +195,27 @@ public:
       prod4 = _mm256_mul_pd(prod4, mul4);
     }
 
-    void mul_no_overflow2(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {
+public:
+    LargeProduct(const LargeExponentFloat& initial_value):
+      LargeProduct(initial_value.significand, initial_value.exponent) {}
+
+    LargeProduct(double significand = 1.0, int64_t exponent = 0):
+      prod1(_mm256_set_pd(1, 1, 1, significand)),
+      prod2(M256D_ONE),
+      prod3(M256D_ONE),
+      prod4(M256D_ONE),
+      exponent(_mm_set_epi32(0, 0, 0, exponent))
+    {
+    }
+
+    void mul_no_overflow12(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {
       mul_no_overflow1(mul1);
       mul_no_overflow2(mul2);
       mul_no_overflow1(mul3);
       mul_no_overflow2(mul4);
     }
 
-    void mul_no_overflow4(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {
+    void mul_no_overflow1234(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {
       mul_no_overflow1(mul1);
       mul_no_overflow2(mul2);
       mul_no_overflow3(mul3);
@@ -226,11 +226,16 @@ public:
       prod1 = _mm256_blendv_pd(_mm256_mul_pd(prod1, mul), prod1, mask);
     }
 
-    void normalize_exponent() {
+    void normalize_exponent1234() {
       normalize_exponent(prod1, exponent);
       normalize_exponent(prod2, exponent);
       normalize_exponent(prod3, exponent);
       normalize_exponent(prod4, exponent);
+    }
+
+    void normalize_exponent12() {
+      normalize_exponent(prod1, exponent);
+      normalize_exponent(prod2, exponent);
     }
     
     void mul(const LargeProduct& other) {

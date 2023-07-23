@@ -68,17 +68,17 @@ TEST(LargeExponentFloat, normalize_exponent) {
 
 TEST(LargeProduct, mul_no_overflow4) {
   LargeProduct prod(2.0); // 2
-  prod.mul_no_overflow4(_mm256_set_pd(2.0, 3.0, 5.0, 10.0), M256D_ONE, M256D_ONE, M256D_ONE);  // 2 * 2 * 3 * 5 * 10 = 600
+  prod.mul_no_overflow1234(_mm256_set_pd(2.0, 3.0, 5.0, 10.0), M256D_ONE, M256D_ONE, M256D_ONE);  // 2 * 2 * 3 * 5 * 10 = 600
   auto actual = prod.get();
   ASSERT_EQ(LargeExponentFloat(600.), actual);
 
-  prod.mul_no_overflow4(M256D_ONE, _mm256_set_pd(1e100, -1e50, 1e25, 1e25), M256D_ONE, M256D_ONE);
+  prod.mul_no_overflow1234(M256D_ONE, _mm256_set_pd(1e100, -1e50, 1e25, 1e25), M256D_ONE, M256D_ONE);
   actual = prod.get().normalized();
   ASSERT_DOUBLE_EQ(-0.76548057224429333 , actual.significand);
   ASSERT_EQ(511L + 163L, actual.exponent);
 
-  prod.mul_no_overflow4(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200), M256D_ONE, M256D_ONE, M256D_ONE);
-  prod.normalize_exponent();
+  prod.mul_no_overflow1234(_mm256_set_pd(1e100, -1e150, -1e125, -1e-200), M256D_ONE, M256D_ONE, M256D_ONE);
+  prod.normalize_exponent1234();
 
   actual = prod.get().normalized();
   ASSERT_DOUBLE_EQ(0.96717862988773895 , actual.significand);
