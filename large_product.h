@@ -71,6 +71,7 @@ inline __m128i extract_and_clear_exponent(__m256d& v) {
   __m256d cleared_exponent = _mm256_andnot_pd(exponent_mask, v);
 
   __m128i exponent = shl52_and_extract_high32bit_from_epi64(_mm256_castpd_si256(exponent_pd));
+  exponent = _mm_sub_epi32(exponent, _mm_set1_epi32(1023));
   v = _mm256_or_pd(cleared_exponent, exponent_reset_mask);
   return exponent;
 }
@@ -184,15 +185,17 @@ inline LargeExponentFloat save_mul(const LargeExponentFloat& a, const LargeExpon
 /**
  * Class for computing large products built from many multiplicands.
  *
- * Uses a floating point with 52-bit significant and integer exponent to store the product.
+ * Uses a floating point with 52-bit significant and separated integer exponent to store the product.
  *
  * Note:
  * - if AVX2 is supported, the exponent is stored as 64bit integer but for each normalization a bias of 1023 is added
- * - if AVX is not supported, the exponent is stored as 32bit integer without bias
+ * - if AVX2 is not supported, the exponent is stored as 32bit integer without bias
  */
 class LargeProduct {
   private:
+#ifdef __AVX2__
     constexpr static int EXPONENT_BIAS = 1023;
+#endif
 
     __m256d prod1;
     __m256d prod2;
@@ -202,7 +205,9 @@ class LargeProduct {
     // Stores extra exponents for each product. Exponents are stored biased, so to get the actual exponent, you need
     // to sum the 4 values and subtract exponent_bias_count * EXPONENT_BIAS.
     __exponent_t exponent;
+#ifdef __AVX2__
     int64_t exponent_bias_count;
+#endif
 
     static void normalize_exponent(__m256d &prod, __exponent_t& exponent) {
       __exponent_t delta_exponent = extract_and_clear_exponent(prod);
@@ -230,10 +235,10 @@ public:
       prod4(M256D_ONE),
 #ifdef __AVX2__
       exponent(_mm256_set_epi64x(0, 0, 0, exponent)),
-#else
-      exponent(_mm_set_epi32(0, 0, 0, exponent)),
-#endif
       exponent_bias_count(0)
+#else
+      exponent(_mm_set_epi32(0, 0, 0, exponent))
+#endif
     {
     }
 
@@ -256,8 +261,13 @@ public:
     void mul_no_overflow(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {
       mul_no_overflow1(mul1);
       mul_no_overflow2(mul2);
+#ifdef SUB_PRODUCT_COUNT_8
+      mul_no_overflow1(mul3);
+      mul_no_overflow2(mul4);
+#else
       mul_no_overflow3(mul3);
       mul_no_overflow4(mul4);
+#endif
     }
 
     void mul_mask_no_overflow(__m256d mul, __m256d mask) {
@@ -269,7 +279,9 @@ public:
       normalize_exponent(prod2, exponent);
       normalize_exponent(prod3, exponent);
       normalize_exponent(prod4, exponent);
+#ifdef __AVX2__
       exponent_bias_count += 16;
+#endif
     }
     
     void mul(const LargeProduct& other) {
@@ -277,10 +289,11 @@ public:
       prod2 = save_mul(prod2, other.prod2, exponent);
       prod3 = save_mul(prod3, other.prod3, exponent);
       prod4 = save_mul(prod4, other.prod4, exponent);
-      exponent_bias_count += 16;
-
       exponent += other.exponent;
+#ifdef __AVX2__
+      exponent_bias_count += 16;
       exponent_bias_count += other.exponent_bias_count;
+#endif
     }
 
     LargeExponentFloat get() const {
@@ -290,7 +303,10 @@ public:
       __m256d prod34 = save_mul(prod3, prod4, local_exponent);
       __m256d prod = save_mul(prod12, prod34, local_exponent);
 
-      int64_t combined_exponent = horizontal_sum(local_exponent) - EXPONENT_BIAS * (exponent_bias_count + 12);
+      int64_t combined_exponent = horizontal_sum(local_exponent);
+#ifdef __AVX2__
+      combined_exponent -= EXPONENT_BIAS * (exponent_bias_count + 12);
+#endif
       double significand = horizontal_product(prod);
       return LargeExponentFloat(significand, combined_exponent);
     }
