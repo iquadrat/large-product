@@ -128,12 +128,14 @@ void prod_realcomplex(
         LargeExponentFloat& prod2
 ) {
 
-  for (int j=0; j<N; j++) {
-    prod1.significand *= sqr(u1-x[j])+sqr(y[j]);
-    prod2.significand *= sqr(u2-x[j])+sqr(y[j]);
-    checkoverflow(prod1.significand,prod1.exponent);
-    checkoverflow(prod2.significand,prod2.exponent);
-  }
+  prod_complexcomplex(N, N, u1, u2, 0, 0, x, y, prod1, prod2);
+
+//  for (int j=0; j<N; j++) {
+//    prod1.significand *= sqr(u1-x[j])+sqr(y[j]);
+//    prod2.significand *= sqr(u2-x[j])+sqr(y[j]);
+//    checkoverflow(prod1.significand,prod1.exponent);
+//    checkoverflow(prod2.significand,prod2.exponent);
+//  }
 
 }
 
@@ -148,14 +150,20 @@ void prod_complexreal(
         LargeExponentFloat& prod1,
         LargeExponentFloat& prod2
 ) {
-  const double v1_sqr=sqr(v1);
-  const double v2_sqr=sqr(v2);
-  for (int j=0; j<N; j++) {
-    prod1.significand *= sqr(u1-x[j])+v1_sqr;
-    prod2.significand *= sqr(u2-x[j])+v2_sqr;
-    checkoverflow(prod1.significand,prod1.exponent);
-    checkoverflow(prod2.significand,prod2.exponent);
-  }
+
+  double* zeros = new_double_array(N);
+  for(int i=0; i<N; ++i) { zeros[i] = 0; }
+
+  prod_complexcomplex(N, N, u1, u2, v1, v2, x, zeros, prod1, prod2);
+
+//  const double v1_sqr=sqr(v1);
+//  const double v2_sqr=sqr(v2);
+//  for (int j=0; j<N; j++) {
+//    prod1.significand *= sqr(u1-x[j])+v1_sqr;
+//    prod2.significand *= sqr(u2-x[j])+v2_sqr;
+//    checkoverflow(prod1.significand,prod1.exponent);
+//    checkoverflow(prod2.significand,prod2.exponent);
+//  }
 }
 
 
@@ -173,7 +181,7 @@ void prod_complexcomplex(
 ) {
 
   const int64_t ELEMENTS_PER_LOOP = 4 * 4;
-  assert(k >=0 && k < N);
+  assert(k >=0);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
   LargeProduct vprod1(prod1);
