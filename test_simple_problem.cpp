@@ -19,7 +19,7 @@ g++ -std=c++11 -O3 -funroll-loops -march=native -lm -o test_simple_problem test_
 
 #include <cassert>
 
-#include "VProd.h"
+#include "large_product.h"
 
 
 using namespace std;
@@ -111,8 +111,8 @@ void prod_realreal(const long int N, const long int k, const double u, const dou
   assert(N % ELEMENTS_PER_LOOP == 0);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
-  VProd prod1(prod_ref, exponent_ref);
-  VProd prod2;
+  LargeProduct prod1(prod_ref, exponent_ref);
+  LargeProduct prod2;
   
   __m256d u_vec = _mm256_set1_pd(u);
   
@@ -227,7 +227,7 @@ void test_realreal() {
 }
 
 void test_all() {
-  test_vprod();
+  test_LargeProduct();
   test_realreal();
 } 
 

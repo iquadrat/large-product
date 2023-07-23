@@ -18,7 +18,7 @@ g++ -std=c++11 -O3 -funroll-loops -march=native -lm -o test_simple_problem2 test
 #include <gnu/libc-version.h>
 #include <cassert>
 #include <mm_malloc.h>
-#include "VProd.h"
+#include "large_product.h"
 
 using namespace std;
 
@@ -118,8 +118,8 @@ void prod_realreal(const long int N, const long int k, const double u1, const do
   assert(k >=0 && k < N);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
-  VProd vprod1(prod1.significand, prod1.exponent);
-  VProd vprod2(prod2.significand, prod2.exponent);
+  LargeProduct vprod1(prod1.significand, prod1.exponent);
+  LargeProduct vprod2(prod2.significand, prod2.exponent);
 
   __m256d u1_vec = _mm256_set1_pd(u1);
   __m256d u2_vec = _mm256_set1_pd(u2);
@@ -243,8 +243,8 @@ void prod_complexcomplex(const long int N, const long int k, const double u1, co
   assert(k >=0 && k < N);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);
 
-  VProd vprod1(prod1.significand, prod1.exponent);
-  VProd vprod2(prod2.significand, prod2.exponent);
+  LargeProduct vprod1(prod1.significand, prod1.exponent);
+  LargeProduct vprod2(prod2.significand, prod2.exponent);
 
   const __m256d u1_vec = _mm256_set1_pd(u1);
   const __m256d u2_vec = _mm256_set1_pd(u2);
@@ -458,11 +458,6 @@ void test_complexcomplex() {
 }
 
 
-void test_all() {
-  test_vprod();
-  test_realreal();
-  test_complexcomplex();
-}
 
 
 int main(int argc, char *argv[]) {
