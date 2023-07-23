@@ -167,13 +167,13 @@ void prod_complexreal(
     const __m256d x2 = _mm256_load_pd(&x[j +  8]);
     const __m256d x3 = _mm256_load_pd(&x[j + 12]);
 
-    vprod1.mul_no_overflow12(
+    vprod1.mul_no_overflow1234(
             sqr_diff1(x0, v1_sqr, u1_vec),
             sqr_diff1(x1, v1_sqr, u1_vec),
             sqr_diff1(x2, v1_sqr, u1_vec),
             sqr_diff1(x3, v1_sqr, u1_vec)
     );
-    vprod2.mul_no_overflow12(
+    vprod2.mul_no_overflow1234(
             sqr_diff1(x0, v2_sqr, u2_vec),
             sqr_diff1(x1, v2_sqr, u2_vec),
             sqr_diff1(x2, v2_sqr, u2_vec),
@@ -181,15 +181,15 @@ void prod_complexreal(
     );
 
     if ((j / ELEMENTS_PER_LOOP) % MULS_PER_EXPONENT_EXTRACTION == 0) {
-      vprod1.normalize_exponent12();
-      vprod2.normalize_exponent12();
+      vprod1.normalize_exponent1234();
+      vprod2.normalize_exponent1234();
     }
   }
 
   __m256d four = _mm256_set1_pd(4);
 
-  vprod1.normalize_exponent12();
-  vprod2.normalize_exponent12();
+  vprod1.normalize_exponent1234();
+  vprod2.normalize_exponent1234();
 
   // Process the remaining elements
   __m256d vn = _mm256_set1_pd(N - 1);
