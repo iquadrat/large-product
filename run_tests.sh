@@ -1,4 +1,5 @@
 set -e
-cmake .
+cd build
+cmake ..
 make
 ./tests

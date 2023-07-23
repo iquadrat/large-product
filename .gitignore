@@ -8,3 +8,4 @@ callgrind.out.*
 tests
 benchmark
 Makefile
+build/*
