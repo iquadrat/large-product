@@ -7,7 +7,7 @@
 #include <random>
 
 #ifndef __AVX2__
-#ab "This code needs AVX2 support. Compile with -mavx2"
+#error "This code needs AVX2 support. Compile with -mavx2"
 #endif
 
 inline std::ostream& operator<<(std::ostream& os, __m256d v) {
