@@ -4,7 +4,8 @@ include(GoogleTest)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_compile_options(-march=native -O3 -g)
+#add_compile_options(-march=native -O3)
+add_compile_options(-mavx -O3)
 
 add_library(vector_products vector_products.cpp)
 

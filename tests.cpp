@@ -12,9 +12,20 @@ double extract_double(__m256d v, int index) {
     return x[index];
 }
 
-TEST(AvxUtils, horizontal_sum) {
+#ifdef __AVX2__
+TEST(AvxUtils, horizontal_sum_256i) {
   ASSERT_EQ(horizontal_sum(_mm256_set_epi64x(1,3,7,11)), 22L);
   ASSERT_EQ(horizontal_sum(_mm256_set_epi64x(10000, -3000, 70, 5500)), 12570L);
+}
+#endif
+
+TEST(AvxUtils, horizontal_sum_128i) {
+  __m256i v64 = _mm256_set_epi64x(1024L << 52,3L << 52,2L << 52,1L << 52);
+  __m128i v32 = shl52_and_extract_high32bit_from_epi64(v64);
+  ASSERT_EQ(1, _mm_extract_epi32(v32, 0));
+  ASSERT_EQ(2, _mm_extract_epi32(v32, 2));
+  ASSERT_EQ(3, _mm_extract_epi32(v32, 1));
+  ASSERT_EQ(1024, _mm_extract_epi32(v32, 3));
 }
 
 TEST(AvxUtils, horizontal_product) {
@@ -25,11 +36,20 @@ TEST(AvxUtils, horizontal_product) {
 
 TEST(LargeProduct, extract_and_clear_exponent) {
   __m256d v = _mm256_set_pd(2, 1e20, 1e-20, -5e189);
+
+#ifdef __AVX2__
   __m256i exp = extract_and_clear_exponent(v);
   ASSERT_EQ(EXPONENT_BIAS +  1LL, _mm256_extract_epi64(exp, 3));
   ASSERT_EQ(EXPONENT_BIAS + 66LL, _mm256_extract_epi64(exp, 2));
   ASSERT_EQ(EXPONENT_BIAS - 67LL, _mm256_extract_epi64(exp, 1));
   ASSERT_EQ(EXPONENT_BIAS +630LL, _mm256_extract_epi64(exp, 0));
+#else // __AVX__
+  __m128i exp = extract_and_clear_exponent(v);
+  ASSERT_EQ(EXPONENT_BIAS +  1, _mm_extract_epi32(exp, 3));
+  ASSERT_EQ(EXPONENT_BIAS + 66, _mm_extract_epi32(exp, 1));
+  ASSERT_EQ(EXPONENT_BIAS - 67, _mm_extract_epi32(exp, 2));
+  ASSERT_EQ(EXPONENT_BIAS +630, _mm_extract_epi32(exp, 0));
+#endif
 
   ASSERT_EQ(1.0, extract_double(v, 3));
   ASSERT_DOUBLE_EQ(1.3552527156068805, extract_double(v, 2));
@@ -82,20 +102,20 @@ TEST(LargeProduct, mul_no_overflow) {
 
 TEST(LargeProduct, mul_mask_no_overflow) {
   LargeProduct prod(100.0);
-  __m256i mask = _mm256_cmpeq_epi64(_mm256_set1_epi64x(2), _mm256_set1_epi64x(2));
-  prod.mul_mask_no_overflow(_mm256_set1_pd(10.0), _mm256_castsi256_pd(mask));
+  __m256d mask = _mm256_cmp_pd(_mm256_set1_pd(2), _mm256_set1_pd(2), _CMP_EQ_OQ);
+  prod.mul_mask_no_overflow(_mm256_set1_pd(10.0), mask);
 
   auto actual = prod.get().normalized();
   ASSERT_EQ(LargeExponentFloat(100.0), actual);
 
-  mask = _mm256_cmpeq_epi64(_mm256_set1_epi64x(2), _mm256_set1_epi64x(3));
-  prod.mul_mask_no_overflow(_mm256_set_pd(5.0, 2.0, 10.0, 0.1), _mm256_castsi256_pd(mask));
+  mask = _mm256_cmp_pd(_mm256_set1_pd(2), _mm256_set1_pd(3), _CMP_EQ_OQ);
+  prod.mul_mask_no_overflow(_mm256_set_pd(5.0, 2.0, 10.0, 0.1), mask);
   actual = prod.get().normalized();
   ASSERT_DOUBLE_EQ(0.9765625, actual.significand);
   ASSERT_EQ(10L, actual.exponent);
 
-  mask = _mm256_cmpeq_epi64(_mm256_set_epi64x(3,2,1,0), _mm256_set1_epi64x(2));
-  prod.mul_mask_no_overflow(_mm256_set_pd(2.0, 3.0, 4.0, 5.0), _mm256_castsi256_pd(mask));
+  mask = _mm256_cmp_pd(_mm256_set_pd(3,2,1,0), _mm256_set1_pd(2), _CMP_EQ_OQ);
+  prod.mul_mask_no_overflow(_mm256_set_pd(2.0, 3.0, 4.0, 5.0), mask);
   actual = prod.get().normalized();
   ASSERT_DOUBLE_EQ(0.6103515625 , actual.significand);
   ASSERT_EQ(16L, actual.exponent);

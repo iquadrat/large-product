@@ -62,22 +62,22 @@ void prod_realreal(
     }
   }
 
-  __m256i four = _mm256_set1_epi64x(4);
-  __m256i vk = _mm256_set1_epi64x(k);
+  __m256d four = _mm256_set1_pd(4);
+  __m256d vk = _mm256_set1_pd(k);
 
   // Process the skipped block
   if (skipj < lastj) {
     vprod1.normalize_exponent();
     vprod2.normalize_exponent();
 
-    __m256i vj = _mm256_set1_epi64x(skipj);
-    vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3, 2, 1, 0));
+    __m256d vj = _mm256_set1_pd(skipj);
+    vj = _mm256_add_pd(vj, _mm256_set_pd(3, 2, 1, 0));
     for (int j = skipj; j < skipj + ELEMENTS_PER_LOOP; j += 4) {
       const __m256d x0 = _mm256_load_pd(&x[j]);
-      __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
+      __m256d mask = _mm256_cmp_pd(vj, vk, _CMP_EQ_OS);
       vprod1.mul_mask_no_overflow(_mm256_sub_pd(u1_vec, x0), mask);
       vprod2.mul_mask_no_overflow(_mm256_sub_pd(u2_vec, x0), mask);
-      vj = _mm256_add_epi64(vj, four);
+      vj = _mm256_add_pd(vj, four);
     }
   }
 
@@ -85,15 +85,15 @@ void prod_realreal(
   vprod2.normalize_exponent();
 
   // Process the remaining elements
-  __m256i vn = _mm256_set1_epi64x(N - 1);
-  __m256i vj = _mm256_set1_epi64x(lastj);
-  vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3,2,1,0));
+  __m256d vn = _mm256_set1_pd(N - 1);
+  __m256d vj = _mm256_set1_pd(lastj);
+  vj = _mm256_add_pd(vj, _mm256_set_pd(3,2,1,0));
   for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
-    __m256d mask = _mm256_castsi256_pd(_mm256_or_si256(_mm256_cmpgt_epi64(vj, vn), _mm256_cmpeq_epi64(vj, vk)));
+    __m256d mask = _mm256_or_pd(_mm256_cmp_pd(vj, vn, _CMP_GT_OS), _mm256_cmp_pd(vj, vk, _CMP_EQ_OS));
     vprod1.mul_mask_no_overflow(_mm256_sub_pd(u1_vec, x0), mask);
     vprod2.mul_mask_no_overflow(_mm256_sub_pd(u2_vec, x0), mask);
-    vj = _mm256_add_epi64(vj, four);
+    vj = _mm256_add_pd(vj, four);
   }
 
   prod1 = vprod1.get();
@@ -186,21 +186,21 @@ void prod_complexreal(
     }
   }
 
-  const __m256i four = _mm256_set1_epi64x(4);
+  __m256d four = _mm256_set1_pd(4);
 
   vprod1.normalize_exponent();
   vprod2.normalize_exponent();
 
   // Process the remaining elements
-  __m256i vn = _mm256_set1_epi64x(N - 1);
-  __m256i vj = _mm256_set1_epi64x(lastj);
-  vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3,2,1,0));
+  __m256d vn = _mm256_set1_pd(N - 1);
+  __m256d vj = _mm256_set1_pd(lastj);
+  vj = _mm256_add_pd(vj, _mm256_set_pd(3,2,1,0));
   for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
-    __m256d mask = _mm256_castsi256_pd(_mm256_cmpgt_epi64(vj, vn));
+    __m256d mask = _mm256_cmp_pd(vj, vn, _CMP_GT_OS);
     vprod1.mul_mask_no_overflow(sqr_diff1(x0, v1_sqr, u1_vec), mask);
     vprod2.mul_mask_no_overflow(sqr_diff1(x0, v2_sqr, u2_vec), mask);
-    vj = _mm256_add_epi64(vj, four);
+    vj = _mm256_add_pd(vj, four);
   }
 
   prod1 = vprod1.get();
@@ -274,23 +274,23 @@ void prod_complexcomplex(
     }
   }
 
-  const __m256i four = _mm256_set1_epi64x(4);
-  const __m256i vk = _mm256_set1_epi64x(k);
+  const __m256d vk = _mm256_set1_pd(k);
+  const __m256d four = _mm256_set1_pd(4);
 
   // Process the skipped block
   if (skipj < lastj) [[likely]] {
     vprod1.normalize_exponent();
     vprod2.normalize_exponent();
 
-    __m256i vj = _mm256_set1_epi64x(skipj);
-    vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3, 2, 1, 0));
+    __m256d vj = _mm256_set1_pd(skipj);
+    vj = _mm256_add_pd(vj, _mm256_set_pd(3, 2, 1, 0));
     for (int j = skipj; j < skipj + ELEMENTS_PER_LOOP; j += 4) {
       const __m256d x0 = _mm256_load_pd(&x[j]);
       const __m256d y0 = _mm256_load_pd(&y[j]);
-      __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
+      __m256d mask = _mm256_cmp_pd(vj, vk, _CMP_EQ_OQ);
       vprod1.mul_mask_no_overflow(sqr_diff2(x0, y0, u1_vec, v1_vec), mask);
       vprod2.mul_mask_no_overflow(sqr_diff2(x0, y0, u2_vec, v2_vec), mask);
-      vj = _mm256_add_epi64(vj, four);
+      vj = _mm256_add_pd(vj, four);
     }
   }
 
@@ -298,16 +298,16 @@ void prod_complexcomplex(
   vprod2.normalize_exponent();
 
   // Process the remaining elements
-  __m256i vn = _mm256_set1_epi64x(N - 1);
-  __m256i vj = _mm256_set1_epi64x(lastj);
-  vj = _mm256_add_epi64(vj, _mm256_set_epi64x(3,2,1,0));
+  __m256d vn = _mm256_set1_pd(N - 1);
+  __m256d vj = _mm256_set1_pd(lastj);
+  vj = _mm256_add_pd(vj, _mm256_set_pd(3,2,1,0));
   for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
     const __m256d y0 = _mm256_load_pd(&y[j]);
-    __m256d mask = _mm256_castsi256_pd(_mm256_or_si256(_mm256_cmpgt_epi64(vj, vn), _mm256_cmpeq_epi64(vj, vk)));
+    __m256d mask = _mm256_or_pd(_mm256_cmp_pd(vj, vn, _CMP_GT_OQ), _mm256_cmp_pd(vj, vk, _CMP_EQ_OQ));
     vprod1.mul_mask_no_overflow(sqr_diff2(x0, y0, u1_vec, v1_vec), mask);
     vprod2.mul_mask_no_overflow(sqr_diff2(x0, y0, u2_vec, v2_vec), mask);
-    vj = _mm256_add_epi64(vj, four);
+    vj = _mm256_add_pd(vj, four);
   }
 
   prod1 = vprod1.get();
