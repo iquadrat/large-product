@@ -23,13 +23,6 @@ __m256d sqr(__m256d v) {
   return _mm256_mul_pd(v,v);
 }
 
-__m256d sqr_diff(__m256d x, __m256d y, __m256d u, __m256d v) {
-  return _mm256_add_pd(
-          sqr(_mm256_sub_pd(u, x)),
-          sqr(_mm256_sub_pd(v, y))
-  );
-}
-
 void prod_realreal(
         const long int N,
         const long int k,
@@ -139,6 +132,12 @@ void prod_realcomplex(
 
 }
 
+__m256d sqr_diff1(__m256d x, __m256d y2, __m256d u) {
+  return _mm256_add_pd(
+          sqr(_mm256_sub_pd(u, x)),
+          y2
+  );
+}
 
 void prod_complexreal(
         const long int N,
@@ -150,11 +149,6 @@ void prod_complexreal(
         LargeExponentFloat& prod1,
         LargeExponentFloat& prod2
 ) {
-
-  double* y = new_double_array(N);
-  for(int i=0; i<N; ++i) { y[i] = 0; }
-
-  //prod_complexcomplex(N, N, u1, u2, v1, v2, x, zeros, prod1, prod2);
 
 //  const double v1_sqr=sqr(v1);
 //  const double v2_sqr=sqr(v2);
@@ -174,8 +168,8 @@ void prod_complexreal(
 
   const __m256d u1_vec = _mm256_set1_pd(u1);
   const __m256d u2_vec = _mm256_set1_pd(u2);
-  const __m256d v1_vec = _mm256_set1_pd(v1);
-  const __m256d v2_vec = _mm256_set1_pd(v2);
+  const __m256d v1_sqr = sqr(_mm256_set1_pd(v1));
+  const __m256d v2_sqr = sqr(_mm256_set1_pd(v2));
 
   const int64_t lastj = N & (-ELEMENTS_PER_LOOP);
 
@@ -187,16 +181,16 @@ void prod_complexreal(
     const __m256d x3 = _mm256_load_pd(&x[j + 12]);
 
     vprod1.mul_no_overflow(
-            sqr_diff(x0, ZERO, u1_vec, v1_vec),
-            sqr_diff(x1, ZERO, u1_vec, v1_vec),
-            sqr_diff(x2, ZERO, u1_vec, v1_vec),
-            sqr_diff(x3, ZERO, u1_vec, v1_vec)
+            sqr_diff1(x0, v1_sqr, u1_vec),
+            sqr_diff1(x1, v1_sqr, u1_vec),
+            sqr_diff1(x2, v1_sqr, u1_vec),
+            sqr_diff1(x3, v1_sqr, u1_vec)
     );
     vprod2.mul_no_overflow(
-            sqr_diff(x0, ZERO, u2_vec, v2_vec),
-            sqr_diff(x1, ZERO, u2_vec, v2_vec),
-            sqr_diff(x2, ZERO, u2_vec, v2_vec),
-            sqr_diff(x3, ZERO, u2_vec, v2_vec)
+            sqr_diff1(x0, v2_sqr, u2_vec),
+            sqr_diff1(x1, v2_sqr, u2_vec),
+            sqr_diff1(x2, v2_sqr, u2_vec),
+            sqr_diff1(x3, v2_sqr, u2_vec)
     );
 
     if ((j / ELEMENTS_PER_LOOP) % 16 == 0) {
@@ -217,8 +211,8 @@ void prod_complexreal(
   for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
     __m256d mask = _mm256_castsi256_pd(_mm256_cmpgt_epi64(vj, vn));
-    vprod1.mul_mask_no_overflow(sqr_diff(x0, ZERO, u1_vec, v1_vec), mask);
-    vprod2.mul_mask_no_overflow(sqr_diff(x0, ZERO, u2_vec, v2_vec), mask);
+    vprod1.mul_mask_no_overflow(sqr_diff1(x0, v1_sqr, u1_vec), mask);
+    vprod2.mul_mask_no_overflow(sqr_diff1(x0, v2_sqr, u2_vec), mask);
     vj = _mm256_add_epi64(vj, four);
   }
 
@@ -226,6 +220,12 @@ void prod_complexreal(
   prod2 = vprod2.get();
 }
 
+__m256d sqr_diff2(__m256d x, __m256d y, __m256d u, __m256d v) {
+  return _mm256_add_pd(
+          sqr(_mm256_sub_pd(u, x)),
+          sqr(_mm256_sub_pd(v, y))
+  );
+}
 
 void prod_complexcomplex(
         const long int N,
@@ -269,16 +269,16 @@ void prod_complexcomplex(
       const __m256d y3 = _mm256_load_pd(&y[j + 12]);
 
       vprod1.mul_no_overflow(
-              sqr_diff(x0, y0, u1_vec, v1_vec),
-              sqr_diff(x1, y1, u1_vec, v1_vec),
-              sqr_diff(x2, y2, u1_vec, v1_vec),
-              sqr_diff(x3, y3, u1_vec, v1_vec)
+              sqr_diff2(x0, y0, u1_vec, v1_vec),
+              sqr_diff2(x1, y1, u1_vec, v1_vec),
+              sqr_diff2(x2, y2, u1_vec, v1_vec),
+              sqr_diff2(x3, y3, u1_vec, v1_vec)
       );
       vprod2.mul_no_overflow(
-              sqr_diff(x0, y0, u2_vec, v2_vec),
-              sqr_diff(x1, y1, u2_vec, v2_vec),
-              sqr_diff(x2, y2, u2_vec, v2_vec),
-              sqr_diff(x3, y3, u2_vec, v2_vec)
+              sqr_diff2(x0, y0, u2_vec, v2_vec),
+              sqr_diff2(x1, y1, u2_vec, v2_vec),
+              sqr_diff2(x2, y2, u2_vec, v2_vec),
+              sqr_diff2(x3, y3, u2_vec, v2_vec)
       );
     }
 
@@ -302,8 +302,8 @@ void prod_complexcomplex(
       const __m256d x0 = _mm256_load_pd(&x[j]);
       const __m256d y0 = _mm256_load_pd(&y[j]);
       __m256d mask = _mm256_castsi256_pd(_mm256_cmpeq_epi64(vj, vk));
-      vprod1.mul_mask_no_overflow(sqr_diff(x0, y0, u1_vec, v1_vec), mask);
-      vprod2.mul_mask_no_overflow(sqr_diff(x0, y0, u2_vec, v2_vec), mask);
+      vprod1.mul_mask_no_overflow(sqr_diff2(x0, y0, u1_vec, v1_vec), mask);
+      vprod2.mul_mask_no_overflow(sqr_diff2(x0, y0, u2_vec, v2_vec), mask);
       vj = _mm256_add_epi64(vj, four);
     }
   }
@@ -319,8 +319,8 @@ void prod_complexcomplex(
     const __m256d x0 = _mm256_load_pd(&x[j]);
     const __m256d y0 = _mm256_load_pd(&y[j]);
     __m256d mask = _mm256_castsi256_pd(_mm256_or_si256(_mm256_cmpgt_epi64(vj, vn), _mm256_cmpeq_epi64(vj, vk)));
-    vprod1.mul_mask_no_overflow(sqr_diff(x0, y0, u1_vec, v1_vec), mask);
-    vprod2.mul_mask_no_overflow(sqr_diff(x0, y0, u2_vec, v2_vec), mask);
+    vprod1.mul_mask_no_overflow(sqr_diff2(x0, y0, u1_vec, v1_vec), mask);
+    vprod2.mul_mask_no_overflow(sqr_diff2(x0, y0, u2_vec, v2_vec), mask);
     vj = _mm256_add_epi64(vj, four);
   }
 
