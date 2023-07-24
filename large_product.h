@@ -208,11 +208,9 @@ public:
     {
     }
 
-    void mul_no_overflow12(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {
+    void mul_no_overflow12(__m256d mul1, __m256d mul2) {
       mul_no_overflow1(mul1);
       mul_no_overflow2(mul2);
-      mul_no_overflow1(mul3);
-      mul_no_overflow2(mul4);
     }
 
     void mul_no_overflow1234(__m256d mul1, __m256d mul2, __m256d mul3, __m256d mul4) {

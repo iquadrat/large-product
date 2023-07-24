@@ -169,18 +169,22 @@ void prod_complexreal(
 
     vprod1.mul_no_overflow12(
             sqr_diff1(x0, v1_sqr, u1_vec),
-            sqr_diff1(x1, v1_sqr, u1_vec),
+            sqr_diff1(x1, v1_sqr, u1_vec)
+    );
+    vprod1.mul_no_overflow12(
             sqr_diff1(x2, v1_sqr, u1_vec),
             sqr_diff1(x3, v1_sqr, u1_vec)
     );
     vprod2.mul_no_overflow12(
             sqr_diff1(x0, v2_sqr, u2_vec),
-            sqr_diff1(x1, v2_sqr, u2_vec),
+            sqr_diff1(x1, v2_sqr, u2_vec)
+    );
+    vprod2.mul_no_overflow12(
             sqr_diff1(x2, v2_sqr, u2_vec),
             sqr_diff1(x3, v2_sqr, u2_vec)
     );
 
-    if ((j / ELEMENTS_PER_LOOP) % MULS_PER_EXPONENT_EXTRACTION == 0) {
+    if ((j / ELEMENTS_PER_LOOP) % (MULS_PER_EXPONENT_EXTRACTION / 2) == 0) {
       vprod1.normalize_exponent12();
       vprod2.normalize_exponent12();
     }
@@ -254,13 +258,13 @@ void prod_complexcomplex(
       const __m256d y2 = _mm256_load_pd(&y[j +  8]);
       const __m256d y3 = _mm256_load_pd(&y[j + 12]);
 
-      vprod1.mul_no_overflow12(
+      vprod1.mul_no_overflow1234(
               sqr_diff2(x0, y0, u1_vec, v1_vec),
               sqr_diff2(x1, y1, u1_vec, v1_vec),
               sqr_diff2(x2, y2, u1_vec, v1_vec),
               sqr_diff2(x3, y3, u1_vec, v1_vec)
       );
-      vprod2.mul_no_overflow12(
+      vprod2.mul_no_overflow1234(
               sqr_diff2(x0, y0, u2_vec, v2_vec),
               sqr_diff2(x1, y1, u2_vec, v2_vec),
               sqr_diff2(x2, y2, u2_vec, v2_vec),
@@ -269,8 +273,8 @@ void prod_complexcomplex(
     }
 
     if ((j / ELEMENTS_PER_LOOP) % MULS_PER_EXPONENT_EXTRACTION == 0) {
-      vprod1.normalize_exponent12();
-      vprod2.normalize_exponent12();
+      vprod1.normalize_exponent1234();
+      vprod2.normalize_exponent1234();
     }
   }
 
