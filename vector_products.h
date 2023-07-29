@@ -25,7 +25,7 @@ void prod_realreal(
         const double* x,
         LargeExponentFloat& prod1,
         LargeExponentFloat& prod2
-);
+) __attribute__((optimize("-fno-tree-pre")));
 
 void prod_realcomplex(
         const long int N,
@@ -35,7 +35,7 @@ void prod_realcomplex(
         const double* y,
         LargeExponentFloat& prod1,
         LargeExponentFloat& prod2
-);
+) __attribute__((optimize("-fno-tree-pre")));
 
 void prod_complexreal(
         const long int N,
@@ -46,8 +46,7 @@ void prod_complexreal(
         const double* x,
         LargeExponentFloat& prod1,
         LargeExponentFloat& prod2
-);
-
+) __attribute__((optimize("-fno-tree-pre")));
 
 void prod_complexcomplex(
         const long int N,
@@ -60,6 +59,6 @@ void prod_complexcomplex(
         const double* y,
         LargeExponentFloat& prod1,
         LargeExponentFloat& prod2
-);
+) __attribute__((optimize("-fno-tree-pre")));
 
 #endif
