@@ -16,6 +16,10 @@ typedef __m256i __exponent_t;
 typedef __m128i __exponent_t;
 #endif
 
+namespace {
+  constexpr static int EXPONENT_BIAS = 1023;
+}
+
 inline std::ostream& operator<<(std::ostream& os, __m256d v) {
   double x[4];
   _mm256_storeu_pd(x, v);
@@ -71,7 +75,7 @@ inline __m128i extract_and_clear_exponent(__m256d& v) {
   __m256d cleared_exponent = _mm256_andnot_pd(exponent_mask, v);
 
   __m128i exponent = shl52_and_extract_high32bit_from_epi64(_mm256_castpd_si256(exponent_pd));
-  exponent = _mm_sub_epi32(exponent, _mm_set1_epi32(1023));
+  exponent = _mm_sub_epi32(exponent, _mm_set1_epi32(EXPONENT_BIAS));
   v = _mm256_or_pd(cleared_exponent, exponent_reset_mask);
   return exponent;
 }
@@ -193,10 +197,6 @@ inline LargeExponentFloat save_mul(const LargeExponentFloat& a, const LargeExpon
  */
 class LargeProduct {
   private:
-#ifdef __AVX2__
-    constexpr static int EXPONENT_BIAS = 1023;
-#endif
-
     __m256d prod1;
     __m256d prod2;
     __m256d prod3;
