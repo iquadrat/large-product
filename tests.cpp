@@ -12,6 +12,13 @@ double extract_double(__m256d v, int index) {
     return x[index];
 }
 
+#ifdef __AVX2__
+TEST(AvxUtils, horizontal_sum_256i) {
+  ASSERT_EQ(horizontal_sum(_mm256_set_epi64x(1,3,7,11)), 22L);
+  ASSERT_EQ(horizontal_sum(_mm256_set_epi64x(10000, -3000, 70, 5500)), 12570L);
+}
+#endif
+
 TEST(AvxUtils, horizontal_sum_128i) {
   __m256i v64 = _mm256_set_epi64x(1024L << 52,3L << 52,2L << 52,1L << 52);
   __m128i v32 = shl52_and_extract_high32bit_from_epi64(v64);
@@ -30,11 +37,20 @@ TEST(AvxUtils, horizontal_product) {
 TEST(LargeProduct, extract_and_clear_exponent) {
   __m256d v = _mm256_set_pd(2, 1e20, 1e-20, -5e189);
 
+#ifdef __AVX2__
+  const int EXPONENT_BIAS = 1023;
+  __m256i exp = extract_and_clear_exponent(v);
+  ASSERT_EQ(EXPONENT_BIAS +  1LL, _mm256_extract_epi64(exp, 3));
+  ASSERT_EQ(EXPONENT_BIAS + 66LL, _mm256_extract_epi64(exp, 2));
+  ASSERT_EQ(EXPONENT_BIAS - 67LL, _mm256_extract_epi64(exp, 1));
+  ASSERT_EQ(EXPONENT_BIAS +630LL, _mm256_extract_epi64(exp, 0));
+#else // __AVX__
   __m128i exp = extract_and_clear_exponent(v);
   ASSERT_EQ(  1, _mm_extract_epi32(exp, 3));
   ASSERT_EQ( 66, _mm_extract_epi32(exp, 1));
   ASSERT_EQ(-67, _mm_extract_epi32(exp, 2));
   ASSERT_EQ(630, _mm_extract_epi32(exp, 0));
+#endif
 
   ASSERT_EQ(1.0, extract_double(v, 3));
   ASSERT_DOUBLE_EQ(1.3552527156068805, extract_double(v, 2));
@@ -66,7 +82,7 @@ TEST(LargeExponentFloat, normalize_exponent) {
   ASSERT_EQ(f1, f3);
 }
 
-TEST(LargeProduct, mul_no_overflow4) {
+TEST(LargeProduct, mul_no_overflow) {
   LargeProduct prod(2.0); // 2
   prod.mul_no_overflow1234(_mm256_set_pd(2.0, 3.0, 5.0, 10.0), M256D_ONE, M256D_ONE, M256D_ONE);  // 2 * 2 * 3 * 5 * 10 = 600
   auto actual = prod.get();
