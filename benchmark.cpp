@@ -97,10 +97,10 @@ int main(int argc, char *argv[]) {
     for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
         double u=distu(gen)*2-1;
         double u0=distu(gen)*2-1;
-        prod_realreal(N,k,u,u0,x,prod,prod0);
+        prod_diff_realrealvec(N, k, u, u0, x, prod, prod0);
       }
     timing.stop();
-    cout << "prod_realreal: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+    cout << "prod_diff_realrealvec: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
     timing.reset();
   }
 
@@ -115,10 +115,10 @@ int main(int argc, char *argv[]) {
         double v = distu(gen) * 2 - 1;
         double u0 = distu(gen) * 2 - 1;
         double v0 = distu(gen) * 2 - 1;
-        prod_complexcomplex(N, k, u, u0, v, v0, x, y, prod, prod0);
+        prod_dist2_complexcomplexvec(N, k, u, u0, v, v0, x, y, prod, prod0);
       }
     timing.stop();
-    cout << "prod_complexcomplex: prod=" << prod.significand / prod0.significand << " exponent="
+    cout << "prod_dist2_complexcomplexvec: prod=" << prod.significand / prod0.significand << " exponent="
          << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
     timing.reset();
   }
@@ -132,10 +132,10 @@ int main(int argc, char *argv[]) {
       for (long int k = 0; k < N; k++) {
         double u = distu(gen) * 2 - 1;
         double u0 = distu(gen) * 2 - 1;
-        prod_realcomplex(N, u, u0, x, y, prod, prod0);
+        prod_dist2_realcomplexvec(N, u, u0, x, y, prod, prod0);
       }
     timing.stop();
-    cout << "prod_realcomplex: prod=" << prod.significand / prod0.significand << " exponent="
+    cout << "prod_dist2_realcomplexvec: prod=" << prod.significand / prod0.significand << " exponent="
          << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
     timing.reset();
   }
@@ -151,10 +151,10 @@ int main(int argc, char *argv[]) {
         double v = distu(gen) * 2 - 1;
         double u0 = distu(gen) * 2 - 1;
         double v0 = distu(gen) * 2 - 1;
-        prod_complexreal(N, u, v, u0, v0, x, prod, prod0);
+        prod_dist2_complexrealvec(N, u, v, u0, v0, x, prod, prod0);
       }
     timing.stop();
-    cout << "prod_complexreal: prod=" << prod.significand / prod0.significand << " exponent="
+    cout << "prod_dist2_complexrealvec: prod=" << prod.significand / prod0.significand << " exponent="
          << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
     timing.reset();
   }

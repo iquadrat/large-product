@@ -1,5 +1,5 @@
-#ifndef __VECTOR_PRODUCTS_H
-#define __VECTOR_PRODUCTS_H
+#ifndef VANDERMONDE_DET_H
+#define VANDERMONDE_DET_H
 
 #include <mm_malloc.h>
 #include "large_product.h"
@@ -11,13 +11,7 @@ inline double* new_double_array(int64_t size) {
 }
 
 
-// **************************************************************************
-// Simple code to optimize: 4 variantes. 
-// Most important 1. (prod_realreal) and 4. (prod_complexcomplex), 2. and 3. should be simply modification of 4. 
-// There should not be more than 32 (better 16) multiplication between factors without balancing the exponent OR not more than 16 (8) multiplication when only checking against a overflowing exponent
-// N=1000..100000
-
-void prod_realreal(
+void prod_diff_realrealvec(
         const long int N,
         const long int k,
         const double u1,
@@ -27,7 +21,7 @@ void prod_realreal(
         LargeExponentFloat& prod2
 ) __attribute__((optimize("-fno-tree-pre")));
 
-void prod_realcomplex(
+void prod_dist2_realcomplexvec(
         const long int N,
         const double u1,
         const double u2,
@@ -37,7 +31,7 @@ void prod_realcomplex(
         LargeExponentFloat& prod2
 ) __attribute__((optimize("-fno-tree-pre")));
 
-void prod_complexreal(
+void prod_dist2_complexrealvec(
         const long int N,
         const double u1,
         const double u2,
@@ -48,7 +42,7 @@ void prod_complexreal(
         LargeExponentFloat& prod2
 ) __attribute__((optimize("-fno-tree-pre")));
 
-void prod_complexcomplex(
+void prod_dist2_complexcomplexvec(
         const long int N,
         const long int k,
         const double u1,

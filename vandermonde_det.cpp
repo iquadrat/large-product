@@ -12,7 +12,7 @@ __m256d sqr(__m256d v) {
 
 constexpr const int64_t MULS_PER_EXPONENT_EXTRACTION = 16;
 
-void prod_realreal(
+void prod_diff_realrealvec(
         const long int N,
         const long int k,
         const double u1,
@@ -100,7 +100,7 @@ void prod_realreal(
   prod2 = vprod2.get();
 }
 
-void prod_realcomplex(
+void prod_dist2_realcomplexvec(
         const long int N,
         const double u1,
         const double u2,
@@ -110,7 +110,7 @@ void prod_realcomplex(
         LargeExponentFloat& prod2
 ) {
 
-  prod_complexcomplex(N, N, u1, u2, 0, 0, x, y, prod1, prod2);
+  prod_dist2_complexcomplexvec(N, N, u1, u2, 0, 0, x, y, prod1, prod2);
 
 //  for (int j=0; j<N; j++) {
 //    prod1.significand *= sqr(u1-x[j])+sqr(y[j]);
@@ -128,7 +128,7 @@ __m256d sqr_diff1(__m256d x, __m256d y2, __m256d u) {
   );
 }
 
-void prod_complexreal(
+void prod_dist2_complexrealvec(
         const long int N,
         const double u1,
         const double u2,
@@ -218,7 +218,7 @@ __m256d sqr_diff2(__m256d x, __m256d y, __m256d u, __m256d v) {
   );
 }
 
-void prod_complexcomplex(
+void prod_dist2_complexcomplexvec(
         const long int N,
         const long int k,
         const double u1,

@@ -130,7 +130,7 @@ void init_random_positions(std::mt19937_64& gen, const long int N, const double 
   }
 }
 
-TEST(prod_realreal, nice_N) {
+TEST(prod_diff_realrealvec, nice_N) {
   constexpr int64_t N = 16000;
   double* x = new_double_array(N);
   std::mt19937_64 gen(42);
@@ -139,7 +139,7 @@ TEST(prod_realreal, nice_N) {
   LargeExponentFloat prod1(7.1, 42 * 511);
   LargeExponentFloat prod2(0.02, -2 * 511);
 
-  prod_realreal(N, 61, 0.0521, 1.213, x, prod1, prod2);
+  prod_diff_realrealvec(N, 61, 0.0521, 1.213, x, prod1, prod2);
   prod1.normalize_exponent();
   prod2.normalize_exponent();
   ASSERT_NEAR(0.65361705616912014, prod1.significand, 1e-8);
@@ -147,7 +147,7 @@ TEST(prod_realreal, nice_N) {
   ASSERT_NEAR(0.5984860745221855, prod2.significand, 1e-8);
   ASSERT_EQ(33L, prod2.exponent);
 
-  prod_realreal(N, 256, -10.23, 0.021, x, prod1, prod2);
+  prod_diff_realrealvec(N, 256, -10.23, 0.021, x, prod1, prod2);
   prod1.normalize_exponent();
   prod2.normalize_exponent();
   ASSERT_NEAR(-0.56747763050434163, prod1.significand, 1e-8);
@@ -158,7 +158,7 @@ TEST(prod_realreal, nice_N) {
   delete[] x;
 }
 
-TEST(prod_realreal, n1000)  {
+TEST(prod_diff_realrealvec, n1000)  {
   constexpr int64_t N = 1000;
   double* x = new_double_array(N);
   std::mt19937_64 gen(42);
@@ -167,7 +167,7 @@ TEST(prod_realreal, n1000)  {
   LargeExponentFloat prod1(7.1, 42 * 511);
   LargeExponentFloat prod2(0.02, -2 * 511);
 
-  prod_realreal(N, 61, 0.0521, 1.213, x, prod1, prod2);
+  prod_diff_realrealvec(N, 61, 0.0521, 1.213, x, prod1, prod2);
   prod1.normalize_exponent();
   prod2.normalize_exponent();
 
@@ -179,7 +179,7 @@ TEST(prod_realreal, n1000)  {
   delete[] x;
 }
 
-TEST(prod_realreal, odd_N) {
+TEST(prod_diff_realrealvec, odd_N) {
   constexpr int64_t N = 999;
   double* x = new_double_array(N);
   std::mt19937_64 gen(42);
@@ -188,7 +188,7 @@ TEST(prod_realreal, odd_N) {
   LargeExponentFloat prod1(7.1, 42 * 511);
   LargeExponentFloat prod2(0.02, -2 * 511);
 
-  prod_realreal(N, 995, 0.0521, 1.213, x, prod1, prod2);
+  prod_diff_realrealvec(N, 995, 0.0521, 1.213, x, prod1, prod2);
   prod1.normalize_exponent();
   prod2.normalize_exponent();
 
@@ -200,7 +200,7 @@ TEST(prod_realreal, odd_N) {
   delete[] x;
 }
 
-TEST(prod_complexcomplex, nice_N) {
+TEST(prod_dist2_complexcomplexvec, nice_N) {
   constexpr int64_t N = 16000;
   double* x = new_double_array(N);
   double* y = new_double_array(N);
@@ -211,7 +211,7 @@ TEST(prod_complexcomplex, nice_N) {
   LargeExponentFloat prod1(7.1, 42 * 511);
   LargeExponentFloat prod2(0.02, -2 * 511);
 
-  prod_complexcomplex(N, 2122, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, prod2);
+  prod_dist2_complexcomplexvec(N, 2122, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, prod2);
   prod1.normalize_exponent();
   prod2.normalize_exponent();
 
@@ -224,7 +224,7 @@ TEST(prod_complexcomplex, nice_N) {
   delete[] y;
 }
 
-TEST(prod_complexcomplex, odd_N) {
+TEST(prod_dist2_complexcomplexvec, odd_N) {
   constexpr int64_t N = 999;
   double* x = new_double_array(N);
   double* y = new_double_array(N);
@@ -235,7 +235,7 @@ TEST(prod_complexcomplex, odd_N) {
   LargeExponentFloat prod1(7.1, 42 * 511);
   LargeExponentFloat prod2(0.02, -2 * 511);
 
-  prod_complexcomplex(N, 997, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, prod2);
+  prod_dist2_complexcomplexvec(N, 997, 1.4334, 0.1233, -2.13, 0.111, x, y, prod1, prod2);
   prod1.normalize_exponent();
   prod2.normalize_exponent();
 
@@ -248,7 +248,7 @@ TEST(prod_complexcomplex, odd_N) {
   delete[] y;
 }
 
-TEST(prod_realcomplex, nice_N) {
+TEST(prod_dist2_realcomplexvec, nice_N) {
   constexpr int64_t N = 1024;
   double* x = new_double_array(N);
   double* y = new_double_array(N);
@@ -259,7 +259,7 @@ TEST(prod_realcomplex, nice_N) {
   LargeExponentFloat prod1(5.6);
   LargeExponentFloat prod2(0.23);
 
-  prod_realcomplex(N, 0.4434, -0.1234, x, y, prod1, prod2);
+  prod_dist2_realcomplexvec(N, 0.4434, -0.1234, x, y, prod1, prod2);
   prod1.normalize_exponent();
   prod2.normalize_exponent();
 
@@ -272,7 +272,7 @@ TEST(prod_realcomplex, nice_N) {
   delete[] y;
 }
 
-TEST(prod_realcomplex, odd_N) {
+TEST(prod_dist2_realcomplexvec, odd_N) {
   constexpr int64_t N = 999;
   double* x = new_double_array(N);
   double* y = new_double_array(N);
@@ -283,7 +283,7 @@ TEST(prod_realcomplex, odd_N) {
   LargeExponentFloat prod1(5.6);
   LargeExponentFloat prod2(0.23);
 
-  prod_realcomplex(N, 50.4434, -0.001234, x, y, prod1, prod2);
+  prod_dist2_realcomplexvec(N, 50.4434, -0.001234, x, y, prod1, prod2);
   prod1.normalize_exponent();
   prod2.normalize_exponent();
 
@@ -296,7 +296,7 @@ TEST(prod_realcomplex, odd_N) {
   delete[] y;
 }
 
-TEST(prod_complexreal, nice_N) {
+TEST(prod_dist2_complexrealvec, nice_N) {
   constexpr int64_t N = 1024;
   double* x = new_double_array(N);
   std::mt19937_64 gen(11);
@@ -305,7 +305,7 @@ TEST(prod_complexreal, nice_N) {
   LargeExponentFloat prod1(5.6);
   LargeExponentFloat prod2(0.23);
 
-  prod_complexreal(N, 0.481, -1.22, 120.051, 0.683, x, prod1, prod2);
+  prod_dist2_complexrealvec(N, 0.481, -1.22, 120.051, 0.683, x, prod1, prod2);
 
   prod1.normalize_exponent();
   prod2.normalize_exponent();
@@ -318,7 +318,7 @@ TEST(prod_complexreal, nice_N) {
   delete[] x;
 }
 
-TEST(prod_complexreal, odd_N) {
+TEST(prod_dist2_complexrealvec, odd_N) {
   constexpr int64_t N = 999;
   double* x = new_double_array(N);
   std::mt19937_64 gen(11);
@@ -327,7 +327,7 @@ TEST(prod_complexreal, odd_N) {
   LargeExponentFloat prod1(5.6);
   LargeExponentFloat prod2(0.23);
 
-  prod_complexreal(N, 0.481, -1.22, 1.051, -10.00001, x, prod1, prod2);
+  prod_dist2_complexrealvec(N, 0.481, -1.22, 1.051, -10.00001, x, prod1, prod2);
 
   prod1.normalize_exponent();
   prod2.normalize_exponent();

@@ -1,5 +1,5 @@
-#ifndef __LARGE_PRODUCT_H
-#define __LARGE_PRODUCT_H
+#ifndef LARGE_PRODUCT_H
+#define LARGE_PRODUCT_H
 
 #include <iostream>
 #include <immintrin.h>
