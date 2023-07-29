@@ -10,7 +10,7 @@ to a value in the range [0.5, 1.0).
 The resulting product is stored as a LargeExponentFloat which stores the exponent (as a power of two) in a separate
 integer field.
 
-## vector_products.h
+## vandermonde_det.h
 
 Specialized functions using LargeProduct to compute large products of complex differences.
 
