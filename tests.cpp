@@ -1,5 +1,5 @@
 #include "large_product.h"
-#include "vector_products.h"
+#include "vandermonde_det.h"
 
 #include <iostream>
 #include "gtest/gtest.h"

@@ -1,4 +1,4 @@
-#include "vector_products.h"
+#include "vandermonde_det.h"
 
 #include <cassert>
 

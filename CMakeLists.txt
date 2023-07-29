@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_compile_options(-march=native -O3)
 
-add_library(vector_products vector_products.cpp)
+add_library(vector_products vandermonde_det.cpp)
 
 add_executable(tests tests.cpp)
 target_link_libraries(tests vector_products gtest)
