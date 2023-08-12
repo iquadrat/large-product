@@ -116,7 +116,7 @@ inline double horizontal_product(__m256d vec) {
 static const __m256d M256D_ONE = _mm256_set1_pd(1);
 
 /**
- * Floating point with 52-bit significant and 64bit exponent.
+ * Floating point with 52-bit significand and 64bit exponent.
  *
  * Note: This class is not optimized for speed. It is used as input/output for LargeProduct.
  */
@@ -189,7 +189,7 @@ inline LargeExponentFloat save_mul(const LargeExponentFloat& a, const LargeExpon
 /**
  * Class for computing large products built from many multiplicands.
  *
- * Uses a floating point with 52-bit significant and separated integer exponent to store the product.
+ * Uses a floating point with 52-bit significand and separated integer exponent to store the product.
  *
  * Note:
  * - if AVX2 is supported, the exponent is stored as 64bit integer but for each normalization a bias of 1023 is added
