@@ -31,6 +31,17 @@ void prod_dist2_realcomplexvec(
         LargeExponentFloat& prod2
 ) __attribute__((optimize("-fno-tree-pre")));
 
+void prod_dist2_realcomplexvec_optm(
+        const long int N,
+        const double u1,
+        const double u2,
+        const double* x,
+        const double* y,
+        LargeExponentFloat& prod1,
+        LargeExponentFloat& prod2
+) __attribute__((optimize("-fno-tree-pre")));
+
+
 void prod_dist2_complexrealvec(
         const long int N,
         const double u1,
@@ -54,5 +65,39 @@ void prod_dist2_complexcomplexvec(
         LargeExponentFloat& prod1,
         LargeExponentFloat& prod2
 ) __attribute__((optimize("-fno-tree-pre")));
+
+
+void vandermonde_real(
+        const long int N,
+        const double* x,
+        LargeExponentFloat& prod
+);
+
+void vandermonde_abs2_complex(
+        const long int N,
+        const double* x,
+        const double* y,
+        LargeExponentFloat& prod
+);
+
+
+void vandermonde_abs2_mixed_terms(
+        const long int Nreal,
+	const long int Ncomplex,
+        const double* lambda,
+        const double* x,
+        const double* y,
+        LargeExponentFloat& prod
+);
+
+void vandermonde_abs2_mixed_terms_small_Nreal(
+        const long int Nreal,
+        const long int Ncomplex,
+        const double* lambda,
+        const double* x,
+        const double* y,
+        LargeExponentFloat& prod
+);
+
 
 #endif
