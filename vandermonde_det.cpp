@@ -67,8 +67,8 @@ void prod_diff_realrealvec(
 
   // Process the skipped block
   if (skipj < lastj) {
-    vprod1.normalize_exponent1234();
-    vprod2.normalize_exponent1234();
+    vprod1.normalize_exponent1();
+    vprod2.normalize_exponent1();
 
     __m256d vj = _mm256_set1_pd(skipj);
     vj = _mm256_add_pd(vj, _mm256_set_pd(3, 2, 1, 0));
@@ -81,8 +81,8 @@ void prod_diff_realrealvec(
     }
   }
 
-  vprod1.normalize_exponent1234();
-  vprod2.normalize_exponent1234();
+  vprod1.normalize_exponent1();
+  vprod2.normalize_exponent1();
 
   // Process the remaining elements
   __m256d vn = _mm256_set1_pd(N - 1);
@@ -192,8 +192,8 @@ void prod_dist2_complexrealvec(
 
   __m256d four = _mm256_set1_pd(4);
 
-  vprod1.normalize_exponent12();
-  vprod2.normalize_exponent12();
+  vprod1.normalize_exponent1();
+  vprod2.normalize_exponent1();
 
   // Process the remaining elements
   __m256d vn = _mm256_set1_pd(N - 1);
@@ -283,8 +283,8 @@ void prod_dist2_complexcomplexvec(
 
   // Process the skipped block
   if (skipj < lastj) [[likely]] {
-    vprod1.normalize_exponent12();
-    vprod2.normalize_exponent12();
+    vprod1.normalize_exponent1();
+    vprod2.normalize_exponent1();
 
     __m256d vj = _mm256_set1_pd(skipj);
     vj = _mm256_add_pd(vj, _mm256_set_pd(3, 2, 1, 0));
@@ -298,8 +298,8 @@ void prod_dist2_complexcomplexvec(
     }
   }
 
-  vprod1.normalize_exponent12();
-  vprod2.normalize_exponent12();
+  vprod1.normalize_exponent1();
+  vprod2.normalize_exponent1();
 
   // Process the remaining elements
   __m256d vn = _mm256_set1_pd(N - 1);

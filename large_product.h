@@ -284,6 +284,13 @@ public:
 #endif
     }
 
+    void normalize_exponent1() {
+      normalize_exponent(prod1, exponent);
+#ifdef __AVX2__
+     exponent_bias_count += 4;
+#endif
+    }
+
     void normalize_exponent12() {
       normalize_exponent(prod1, exponent);
       normalize_exponent(prod2, exponent);
@@ -305,15 +312,26 @@ public:
     }
 
     LargeExponentFloat get() const {
-      __exponent_t local_exponent = exponent;
+      // Make sure the individual products are normalized. Then, we do not have to normalize
+      // when calculating the horizontal product as there is guaranteed no over-/underflow.
+      __m256d prod1 = this->prod1;
+      __m256d prod2 = this->prod2;
+      __m256d prod3 = this->prod3;
+      __m256d prod4 = this->prod4;
+      __exponent_t exponent = this->exponent;
 
-      __m256d prod12 = save_mul(prod1, prod2, local_exponent);
-      __m256d prod34 = save_mul(prod3, prod4, local_exponent);
-      __m256d prod = save_mul(prod12, prod34, local_exponent);
+      normalize_exponent(prod1, exponent);
+      normalize_exponent(prod2, exponent);
+      normalize_exponent(prod3, exponent);
+      normalize_exponent(prod4, exponent);
 
-      int64_t combined_exponent = horizontal_sum(local_exponent);
+      __m256d prod12 = _mm256_mul_pd(prod1, prod2);
+      __m256d prod34 = _mm256_mul_pd(prod3, prod4);
+      __m256d prod = _mm256_mul_pd(prod12, prod34);
+
+      int64_t combined_exponent = horizontal_sum(exponent);
 #ifdef __AVX2__
-      combined_exponent -= EXPONENT_BIAS * (exponent_bias_count + 12);
+      combined_exponent -= EXPONENT_BIAS * (exponent_bias_count + 16);
 #endif
       double significand = horizontal_product(prod);
       return LargeExponentFloat(significand, combined_exponent);
