@@ -340,6 +340,43 @@ TEST(prod_dist2_complexrealvec, odd_N) {
   delete[] x;
 }
 
+TEST(prod_dist2_complexcomplexvec, small) {
+  std::mt19937_64 gen = std::mt19937_64();
+
+  const long int M = 1000;
+
+  double * x = new_double_array(M);
+  double * y = new_double_array(M);
+
+  const double b=1e-5;
+
+  init_random_positions(gen, M,-b,b,x);
+  init_random_positions(gen, M,-b,b,y);
+
+  const long int j=262;
+  const long int N=261;
+
+  const double u=x[j-1];
+  const double u0=x[j];
+  const double v=y[j-1];
+  const double v0=y[j];
+
+  LargeExponentFloat prod1(1.0);
+  LargeExponentFloat prod2(1.0);
+
+  prod_dist2_complexcomplexvec(N,0,u,u0,v,v0,x,y,prod1,prod2);
+
+  LargeExponentFloat expectedProd1(1.01701e-43, -8687);
+  prod1.normalize_exponent();
+  expectedProd1.normalize_exponent();
+
+  EXPECT_EQ(-8829, expectedProd1.exponent);
+  EXPECT_NEAR(0.56700202185894077, expectedProd1.significand, 1e-6);
+
+  delete[] x;
+  delete[] y;
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
