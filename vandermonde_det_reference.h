@@ -2,9 +2,9 @@
 #define VANDERMONDE_DET_REFERENCE_H
 
 constexpr const long int vandermonde_exponent_low_high = 511;
-constexpr const double vandermonde_factor_ln = std::log(static_cast<double>(2)) * vandermonde_exponent_low_high;
+extern const double vandermonde_factor_ln;
 
-void prod_diff_realrealvec_test(
+void prod_diff_realrealvec_reference(
         const long int N,
         const long int k,
         const double u1,
@@ -16,7 +16,7 @@ void prod_diff_realrealvec_test(
         long int &exponent2
 );
 
-void prod_dist2_realcomplexvec_test(
+void prod_dist2_realcomplexvec_reference(
         const long int N,
         const double u1,
         const double u2,
@@ -28,7 +28,7 @@ void prod_dist2_realcomplexvec_test(
         long int &exponent2
 );
 
-void prod_dist2_complexrealvec_test(
+void prod_dist2_complexrealvec_reference(
         const long int N,
         const double u1,
         const double u2,
@@ -41,7 +41,7 @@ void prod_dist2_complexrealvec_test(
         long int &exponent2
 );
 
-void prod_dist2_complexcomplexvec_test(
+void prod_dist2_complexcomplexvec_reference(
         const long int N,
         const long int k,
         const double u1,
@@ -56,14 +56,14 @@ void prod_dist2_complexcomplexvec_test(
         long int &exponent2
 );
 
-void vandermonde_real_test(
+void vandermonde_real_reference(
         const long int N,
         const double *x,
         double &prod,
         long int &exponent
 );
 
-void vandermonde_abs2_complex_test(
+void vandermonde_abs2_complex_reference(
         const long int N,
         const double *x,
         const double *y,
@@ -71,7 +71,7 @@ void vandermonde_abs2_complex_test(
         long int &exponent
 );
 
-void vandermonde_abs2_mixed_terms_test(
+void vandermonde_abs2_mixed_terms_reference(
         const long int Nreal,
         const long int Ncomplex,
         const double *lambda,

@@ -1,8 +1,9 @@
 #include <cmath>
 #include "vandermonde_det_reference.h"
 
-constexpr const double vandermonde_toohigh = std::pow(2, vandermonde_exponent_low_high);
-constexpr const double vandermonde_toolow = std::pow(2, -vandermonde_exponent_low_high);
+const double vandermonde_factor_ln = std::log(static_cast<double>(2)) * vandermonde_exponent_low_high;
+const double vandermonde_toohigh = std::pow(2, vandermonde_exponent_low_high);
+const double vandermonde_toolow = std::pow(2, -vandermonde_exponent_low_high);
 
 
 inline void vandermonde_check_overflow(double &prod, long int &exponent) {
@@ -32,7 +33,7 @@ inline double sqr(const double x) {
 }
 
 
-void prod_diff_realrealvec_test(
+void prod_diff_realrealvec_reference(
         const long int N,
         const long int k,
         const double u1,
@@ -53,7 +54,7 @@ void prod_diff_realrealvec_test(
   }
 }
 
-void prod_dist2_realcomplexvec_test(
+void prod_dist2_realcomplexvec_reference(
         const long int N,
         const double u1,
         const double u2,
@@ -74,7 +75,7 @@ void prod_dist2_realcomplexvec_test(
 }
 
 
-void prod_dist2_complexrealvec_test(
+void prod_dist2_complexrealvec_reference(
         const long int N,
         const double u1,
         const double u2,
@@ -97,7 +98,7 @@ void prod_dist2_complexrealvec_test(
 }
 
 
-void prod_dist2_complexcomplexvec_test(
+void prod_dist2_complexcomplexvec_reference(
         const long int N,
         const long int k,
         const double u1,
@@ -122,7 +123,7 @@ void prod_dist2_complexcomplexvec_test(
 }
 
 
-void vandermonde_real_test(
+void vandermonde_real_reference(
         const long int N,
         const double *x,
         double &prod,
@@ -137,7 +138,7 @@ void vandermonde_real_test(
 }
 
 
-void vandermonde_abs2_complex_test(
+void vandermonde_abs2_complex_reference(
         const long int N,
         const double *x,
         const double *y,
@@ -153,7 +154,7 @@ void vandermonde_abs2_complex_test(
 }
 
 
-void vandermonde_abs2_mixed_terms_test(
+void vandermonde_abs2_mixed_terms_reference(
         const long int Nreal,
         const long int Ncomplex,
         const double *lambda,
