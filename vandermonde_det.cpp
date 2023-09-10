@@ -85,12 +85,12 @@ void prod_diff_realrealvec(
   vprod2.normalize_exponent1();
 
   // Process the remaining elements
-  __m256d vn = _mm256_set1_pd(N - 1);
+  __m256d vn = _mm256_set1_pd(N);
   __m256d vj = _mm256_set1_pd(lastj);
   vj = _mm256_add_pd(vj, _mm256_set_pd(3,2,1,0));
   for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
-    __m256d mask = _mm256_or_pd(_mm256_cmp_pd(vj, vn, _CMP_GT_OS), _mm256_cmp_pd(vj, vk, _CMP_EQ_OS));
+    __m256d mask = _mm256_or_pd(_mm256_cmp_pd(vj, vn, _CMP_GE_OS), _mm256_cmp_pd(vj, vk, _CMP_EQ_OS));
     vprod1.mul_mask_no_overflow(_mm256_sub_pd(u1_vec, x0), mask);
     vprod2.mul_mask_no_overflow(_mm256_sub_pd(u2_vec, x0), mask);
     vj = _mm256_add_pd(vj, four);
@@ -100,36 +100,14 @@ void prod_diff_realrealvec(
   prod2 = vprod2.get();
 }
 
-void prod_dist2_realcomplexvec(
-        const long int N,
-        const double u1,
-        const double u2,
-        const double* x,
-        const double* y,
-        LargeExponentFloat& prod1,
-        LargeExponentFloat& prod2
-) {
-
-  prod_dist2_complexcomplexvec(N, N, u1, u2, 0, 0, x, y, prod1, prod2);
-
-//  for (int j=0; j<N; j++) {
-//    prod1.significand *= sqr(u1-x[j])+sqr(y[j]);
-//    prod2.significand *= sqr(u2-x[j])+sqr(y[j]);
-//    checkoverflow(prod1.significand,prod1.exponent);
-//    checkoverflow(prod2.significand,prod2.exponent);
-//  }
-
-}
-
-__m256d sqr_diff1(__m256d x, __m256d y2, __m256d u) {
+__m256d sqr_diff1(__m256d x, __m256d y_sqr, __m256d u) {
   return _mm256_add_pd(
           sqr(_mm256_sub_pd(u, x)),
-          y2
+          y_sqr
   );
 }
 
-
-void prod_dist2_realcomplexvec_optm2(
+void prod_dist2_realcomplexvec(
         const long int N,
         const double u1,
         const double u2,
@@ -191,13 +169,13 @@ void prod_dist2_realcomplexvec_optm2(
   vprod2.normalize_exponent1();
 
   // Process the remaining elements
-  __m256d vn = _mm256_set1_pd(N - 1);
+  __m256d vn = _mm256_set1_pd(N );
   __m256d vj = _mm256_set1_pd(lastj);
   vj = _mm256_add_pd(vj, _mm256_set_pd(3,2,1,0));
   for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
     const __m256d y0_sqr = sqr(_mm256_load_pd(&y[j]));
-    __m256d mask = _mm256_cmp_pd(vj, vn, _CMP_GT_OS);
+    __m256d mask = _mm256_cmp_pd(vj, vn, _CMP_GE_OS);
     vprod1.mul_mask_no_overflow(sqr_diff1(x0, y0_sqr, u1_vec), mask);
     vprod2.mul_mask_no_overflow(sqr_diff1(x0, y0_sqr, u2_vec), mask);
     vj = _mm256_add_pd(vj, four);
@@ -206,11 +184,6 @@ void prod_dist2_realcomplexvec_optm2(
   prod1 = vprod1.get();
   prod2 = vprod2.get();
 }
-
-
-
-
-
 
 void prod_dist2_complexrealvec(
         const long int N,
@@ -280,12 +253,12 @@ void prod_dist2_complexrealvec(
   vprod2.normalize_exponent1();
 
   // Process the remaining elements
-  __m256d vn = _mm256_set1_pd(N - 1);
+  __m256d vn = _mm256_set1_pd(N);
   __m256d vj = _mm256_set1_pd(lastj);
   vj = _mm256_add_pd(vj, _mm256_set_pd(3,2,1,0));
   for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
-    __m256d mask = _mm256_cmp_pd(vj, vn, _CMP_GT_OS);
+    __m256d mask = _mm256_cmp_pd(vj, vn, _CMP_GE_OS);
     vprod1.mul_mask_no_overflow(sqr_diff1(x0, v1_sqr, u1_vec), mask);
     vprod2.mul_mask_no_overflow(sqr_diff1(x0, v2_sqr, u2_vec), mask);
     vj = _mm256_add_pd(vj, four);
@@ -386,13 +359,13 @@ void prod_dist2_complexcomplexvec(
   vprod2.normalize_exponent1();
 
   // Process the remaining elements
-  __m256d vn = _mm256_set1_pd(N - 1);
+  __m256d vn = _mm256_set1_pd(N);
   __m256d vj = _mm256_set1_pd(lastj);
   vj = _mm256_add_pd(vj, _mm256_set_pd(3,2,1,0));
   for (int j=lastj; j<N; j += 4) {
     const __m256d x0 = _mm256_load_pd(&x[j]);
     const __m256d y0 = _mm256_load_pd(&y[j]);
-    __m256d mask = _mm256_or_pd(_mm256_cmp_pd(vj, vn, _CMP_GT_OQ), _mm256_cmp_pd(vj, vk, _CMP_EQ_OQ));
+    __m256d mask = _mm256_or_pd(_mm256_cmp_pd(vj, vn, _CMP_GE_OQ), _mm256_cmp_pd(vj, vk, _CMP_EQ_OQ));
     vprod1.mul_mask_no_overflow(sqr_diff2(x0, y0, u1_vec, v1_vec), mask);
     vprod2.mul_mask_no_overflow(sqr_diff2(x0, y0, u2_vec, v2_vec), mask);
     vj = _mm256_add_pd(vj, four);
@@ -401,8 +374,6 @@ void prod_dist2_complexcomplexvec(
   prod1 = vprod1.get();
   prod2 = vprod2.get();
 }
-
-
 
 // Computes real Vandermonde determinant
 void vandermonde_real(
@@ -413,13 +384,16 @@ void vandermonde_real(
   LargeExponentFloat prod2(1.0);
 
   for (int64_t j=2; j<N; j+=2) [[likely]] {
-    prod_diff_realrealvec(j-1,N,x[j-1],x[j],x,prod,prod2); // Multiplication of x[j] and x[j-1] with all diff2 to x[k] where k<j-1    
+    // Multiplication of x[j] and x[j-1] with all diff2 to x[k] where k<j-1
+    prod_diff_realrealvec(j-1,N,x[j-1],x[j],x,prod,prod2);
     prod.significand*=x[j]-x[j-1]; 
   }
   prod.significand*=prod2.significand;
   prod.exponent+=prod2.exponent;
-  if (N % 2==0 && N>0 ) [[likely]] { 
-    prod_diff_realrealvec(N-1,N,x[N-1],x[N-1],x,prod,prod2); // Multiplication of last element with diff2 to all other elements in case when N is even (as it was not contained in the previous loop). prod2 in this call is disregardedas as there is only one element left.
+  if (N % 2==0 && N>0 ) [[likely]] {
+    // Multiplication of last element with diff2 to all other elements in case when N is even (as it was not contained
+    // in the previous loop). prod2 in this call is disregardedas as there is only one element left.
+    prod_diff_realrealvec(N-1,N,x[N-1],x[N-1],x,prod,prod2);
   }  
 }
 
@@ -435,13 +409,16 @@ void vandermonde_abs2_complex(
   LargeExponentFloat prod2(1.0);
 
   for (int64_t j=2; j<N; j+=2) [[likely]] {
-    prod_dist2_complexcomplexvec(j-1,N,x[j-1],x[j],y[j-1],y[j],x,y,prod,prod2); // Multiplication of x[j] and x[j-1] with all diff2 to x[k] where k<j-1    
+    // Multiplication of x[j] and x[j-1] with all diff2 to x[k] where k<j-1
+    prod_dist2_complexcomplexvec(j-1,N,x[j-1],x[j],y[j-1],y[j],x,y,prod,prod2);
     prod.significand*=sqr(x[j]-x[j-1])+sqr(y[j]-y[j-1]);
   }
   prod.significand*=prod2.significand;
   prod.exponent+=prod2.exponent;
-  if (N % 2==0 && N>0) [[likely]] { 
-    prod_dist2_complexcomplexvec(N-1,N,x[N-1],x[N-1],y[N-1],y[N-1],x,y,prod,prod2); // Multiplication of last element with diff2 to all other elements in case when N is even (as it was not contained in the previous loop). prod2 in this call is disregardedas as there is only one element left.
+  if (N % 2==0 && N>0) [[likely]] {
+    // Multiplication of last element with diff2 to all other elements in case when N is even (as it was not contained
+    // in the previous loop). prod2 in this call is disregarded as there is only one element left.
+    prod_dist2_complexcomplexvec(N-1,N,x[N-1],x[N-1],y[N-1],y[N-1],x,y,prod,prod2);
   }  
 }
 
@@ -458,12 +435,15 @@ void vandermonde_abs2_mixed_terms(
   LargeExponentFloat prod2(1.0);
 
   for (int64_t j=1; j<Ncomplex; j+=2) [[likely]] {
-    prod_dist2_complexrealvec(Nreal,x[j-1],x[j],y[j-1],y[j],lambda,prod,prod2); // Multiplication of x[j] and x[j-1] with all diff2 to lambda[k]  
+    // Multiplication of x[j] and x[j-1] with all diff2 to lambda[k]
+    prod_dist2_complexrealvec(Nreal,x[j-1],x[j],y[j-1],y[j],lambda,prod,prod2);
   }
   prod.significand*=prod2.significand;
   prod.exponent+=prod2.exponent;
-  if (Ncomplex % 2==1) [[unlikely]] { 
-    prod_dist2_complexrealvec(Nreal,x[Ncomplex-1],x[Ncomplex-1],y[Ncomplex-1],y[Ncomplex-1],lambda,prod,prod2); // Multiplication of last element with diff2 to all other elements in case when N is odd (as it was not contained in the previous loop). prod2 in this call is disregardedas as there is only one element left.
+  if (Ncomplex % 2==1) [[unlikely]] {
+    // Multiplication of last element with diff2 to all other elements in case when N is odd (as it was not contained
+    // in the previous loop). prod2 in this call is disregarded as there is only one element left.
+    prod_dist2_complexrealvec(Nreal,x[Ncomplex-1],x[Ncomplex-1],y[Ncomplex-1],y[Ncomplex-1],lambda,prod,prod2);
   }  
 }
 
@@ -479,12 +459,15 @@ void vandermonde_abs2_mixed_terms_small_Nreal(
   LargeExponentFloat prod2(1.0);
 
   for (int64_t j=1; j<Nreal; j+=2) [[likely]] {
-    prod_dist2_realcomplexvec(Ncomplex,lambda[j-1],lambda[j],x,y,prod,prod2); // Multiplication of lambda[j] and lambda[j-1] with all diff2 to x[k]  
+    // Multiplication of lambda[j] and lambda[j-1] with all diff2 to x[k]
+    prod_dist2_realcomplexvec(Ncomplex,lambda[j-1],lambda[j],x,y,prod,prod2);
   }
   prod.significand*=prod2.significand;
   prod.exponent+=prod2.exponent;
   if (Nreal % 2==1) [[unlikely]] {
-    prod_dist2_realcomplexvec(Ncomplex,lambda[Nreal-1],lambda[Nreal-1],x,y,prod,prod2); // Multiplication of last element with diff2 to all other elements in case when N is odd (as it was not contained in the previous loop). prod2 in this call is disregardedas as there is only one element left.
+    // Multiplication of last element with diff2 to all other elements in case when N is odd (as it was not contained
+    // in the previous loop). prod2 in this call is disregardedas as there is only one element left.
+    prod_dist2_realcomplexvec(Ncomplex,lambda[Nreal-1],lambda[Nreal-1],x,y,prod,prod2);
   }
 }
 
