@@ -8,5 +8,6 @@ callgrind.out.*
 tests
 benchmark
 Makefile
-build/*
+/build/
 .idea
+/cmake-build-debug/
