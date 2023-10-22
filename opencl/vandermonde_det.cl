@@ -16,6 +16,11 @@ const uint32_t WAVEFRONT_SIZE = 64;
 typedef union {
     uint64_t u64;
     double f64;
+//    struct {
+//        int64_t mantisa : 52;
+//        int32_t exponent : 11;
+//        int32_t sign : 1;
+//    } parts;
 } double_cast;
 
 int32_t normalize_exponent(double* prod) {
@@ -23,6 +28,10 @@ int32_t normalize_exponent(double* prod) {
   int32_t exponent = (((*cast_prod).u64 & EXPONENT_MASK) >> 52) - EXPONENT_BIAS;
   (*cast_prod).u64 = ((*cast_prod).u64 & ~EXPONENT_MASK) | EXPONENT_RESET_MASK;
   return exponent;
+//  double_cast* cast_prod = (double_cast*)prod;
+//  int32_t exponent = cast_prod->parts.exponent;
+//  cast_prod->parts.exponent = 0;
+//  return exponent;
 }
 
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable

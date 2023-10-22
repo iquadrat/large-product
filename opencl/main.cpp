@@ -21,9 +21,9 @@ void expect_prod(LargeProduct actual, LargeProduct expected) {
 void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, const std::vector<double>& x) {
   const size_t workgroupSize = 256;
   const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
-  const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 32;
+  const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 11;
 
-  cl::Buffer bufferX = context.createBuffer("x", sizeof(double) * N * M, CL_MEM_READ_ONLY);
+  cl::Buffer bufferX = context.createBuffer("x", sizeof(double) * N * M + 10000, CL_MEM_READ_ONLY);
   cl::Buffer bufferProd1 = context.createBuffer("prod1", sizeof(LargeProduct) * M, CL_MEM_READ_WRITE);
   cl::Buffer bufferProd2 = context.createBuffer("prod2", sizeof(LargeProduct) * M, CL_MEM_READ_WRITE);
 
@@ -153,7 +153,20 @@ Total time: 119.198
 prod: -1.39209 * 2^-139635901
 Memory read rate: 73.794 GB/s
 64bit flops: 147.588 / 8 /s
-Result matches expectation :-)
+
+M = 4 , N= 1048576
+Total time: 390.016
+prod: -1.99591 * 2^351275623
+Memory read rate: 90.2126 GB/s
+64bit flops: 22.5531 /s
+
+M = 4 , N= 1059776
+Total time: 212.733
+prod: 1.93072 * 2^330870711
+Memory read rate: 168.945 GB/s
+64bit flops: 42.2361 /s
+
+
 
 N = 1048576
 Total time: 164.358
@@ -193,6 +206,5 @@ Total time: 114.884
 prod: -1.60203 * 2^16862532
 Memory read rate: 306.261 GB/s
 64bit flops: 76.5652 /s
-Invalid result!
 
 */
