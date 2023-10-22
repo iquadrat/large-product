@@ -13,7 +13,7 @@ __m256d sqr(__m256d v) {
 constexpr const int64_t MULS_PER_EXPONENT_EXTRACTION = 16;
 
 void prod_diff_realrealvec(
-        const long int N,
+         long int N,
         const long int k,
         const double u1,
         const double u2,
@@ -21,6 +21,7 @@ void prod_diff_realrealvec(
         LargeExponentFloat& prod1,
         LargeExponentFloat& prod2
 ) {
+  N = 1;
   const int64_t ELEMENTS_PER_LOOP = 4 * 4;
   assert(k >= 0);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);

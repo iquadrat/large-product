@@ -68,7 +68,7 @@ public:
 constexpr const int REPETITIONS = 1;
 
 int main(int argc, char *argv[]) {
-  gen = std::mt19937_64();
+  gen = std::mt19937_64(42);
 
   if (argc!=3) {
     cout << argv[0] << "M N\n";
@@ -86,7 +86,6 @@ int main(int argc, char *argv[]) {
   init_random_positions(N,-1,1,x);
   init_random_positions(N,-1,1,y);
 
-
   stopwatch timing;
 
   for(int rep = 0; rep < REPETITIONS; ++rep) {
@@ -94,11 +93,14 @@ int main(int argc, char *argv[]) {
     LargeExponentFloat prod0(1.0);
 
     timing.start();
-    for (long int i=0; i<M; i++) for (long int k=0; k<N; k++) {
+    for (long int i=0; i<M; i++) {
+      for (long int k=0; k<N; k++) {
         double u=distu(gen)*2-1;
         double u0=distu(gen)*2-1;
         prod_diff_realrealvec(N, k, u, u0, x, prod, prod0);
+        cout << "iteration " << u << "/" << u0 << "/" << k << ": " << prod << endl;
       }
+    }
     timing.stop();
     cout << "prod_diff_realrealvec: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
     timing.reset();
