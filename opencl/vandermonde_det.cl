@@ -82,6 +82,10 @@ void prod_diff_realrealvec(
         __global struct LargeProduct *g_prod1,
         __global struct LargeProduct *g_prod2
 ) {
+  if (get_global_id(1) != 0) {
+    return;
+  }
+
   const uint32_t lid = get_local_id(0);
   int32_t group_offset = get_group_id(0) * WORKGROUP_SIZE * MULS_PER_EXPONENT_EXTRACTION;
 
