@@ -11,7 +11,7 @@ typedef long   int64_t;
 const uint64_t EXPONENT_MASK = 0x7ff0000000000000ULL;
 const uint64_t EXPONENT_RESET_MASK = 0x3ff0000000000000ULL;
 const int32_t EXPONENT_BIAS = 1023;
-//const uint32_t WAVEFRONT_SIZE = 64;
+const uint32_t WAVEFRONT_SIZE = 64;
 
 typedef union {
     uint64_t u64;
@@ -35,9 +35,13 @@ void atomic_mul(volatile __global double *source, const double mul) {
 }
 
 __kernel void prod_divide(
-        __global struct LargeProduct *g_prod1,
-        __global struct LargeProduct *g_prod2
+        __global struct LargeProduct *g_prod1_array,
+        __global struct LargeProduct *g_prod2_array
 ) {
+  int32_t gid = get_global_id(0);
+  __global struct LargeProduct* g_prod1 = &g_prod1_array[gid];
+  __global struct LargeProduct* g_prod2 = &g_prod2_array[gid];
+
   double prod = g_prod1->prod / g_prod2->prod;
   int32_t exponent = g_prod1->exponent - g_prod2->exponent;
   exponent += normalize_exponent(&prod);
@@ -58,7 +62,7 @@ void horizontal_reduce(__local int32_t* exponents, __local double* products, int
 
   // local memory reduction
   int i = WORKGROUP_SIZE/2;
-  for(; i>/*WAVEFRONT_SIZE*/0; i /= 2) {
+  for(; i>WAVEFRONT_SIZE; i /= 2) {
     if(lid < i) {
       exponents[lid] += exponents[lid + i];
       products[lid]  *= products[lid + i];
@@ -67,10 +71,12 @@ void horizontal_reduce(__local int32_t* exponents, __local double* products, int
   }
 
   // wavefront reduction
-//  for(; i>0; i /= 2) {
-//    if(lid < i)
-//      localBuffer[lid] = res = res + localBuffer[lid + i];
-//  }
+  for(; i>0; i /= 2) {
+    if(lid < i) {
+      exponents[lid] += exponents[lid + i];
+      products[lid]  *= products[lid + i];
+    }
+  }
 }
 
 __kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
@@ -83,24 +89,28 @@ void prod_diff_realrealvec(
         __global struct LargeProduct *g_prod2
 ) {
   int32_t m = get_global_id(1);
-  int32_t group_offset = VECTOR_SIZE * m + get_group_id(0) * WORKGROUP_SIZE * MULS_PER_EXPONENT_EXTRACTION;
+  int32_t group_offset = VECTOR_SIZE * m + get_group_id(0) * WORKGROUP_SIZE * ELEMENTS_PER_WORKITEM;
+  const uint32_t lid = get_local_id(0);
 
   double prod1 = 1.0;
   double prod2 = 1.0;
+  int32_t exponent1 = 0;
+  int32_t exponent2 = 0;
 
-  const uint32_t lid = get_local_id(0);
   // TODO: Handle case where N is not a multiple of MULS_PER_EXPONENT_EXTRACTION
-  for(int i = 0; i < MULS_PER_EXPONENT_EXTRACTION; i++) {
-      int32_t offset = group_offset + i * WORKGROUP_SIZE + lid;
-//    int32_t offset = group_offset + lid * MULS_PER_EXPONENT_EXTRACTION + i;
-      if (offset != k) {
-          prod1 *= u1 - x[offset];
-          prod2 *= u2 - x[offset];
-      }
-  }
+  for(int j =0; j < ELEMENTS_PER_WORKITEM / MULS_PER_EXPONENT_EXTRACTION; ++j) {
 
-  int32_t exponent1 = normalize_exponent(&prod1);
-  int32_t exponent2 = normalize_exponent(&prod2);
+    for (int i = 0; i < MULS_PER_EXPONENT_EXTRACTION; i++) {
+      int32_t offset = group_offset + j * MULS_PER_EXPONENT_EXTRACTION * WORKGROUP_SIZE + i * WORKGROUP_SIZE + lid;
+      if (offset != k) {
+        prod1 *= u1 - x[offset];
+        prod2 *= u2 - x[offset];
+      }
+    }
+
+    exponent1 += normalize_exponent(&prod1);
+    exponent2 += normalize_exponent(&prod2);
+  }
 
   __local int32_t exponents[WORKGROUP_SIZE];
   __local double products[WORKGROUP_SIZE];

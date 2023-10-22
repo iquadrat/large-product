@@ -20,7 +20,8 @@ void expect_prod(LargeProduct actual, LargeProduct expected) {
 
 void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, const std::vector<double>& x) {
   const size_t workgroupSize = 256;
-  const int64_t MULS_PER_EXPONENT_EXTRACTION = 16;
+  const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
+  const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 32;
 
   cl::Buffer bufferX = context.createBuffer("x", sizeof(double) * N * M, CL_MEM_READ_ONLY);
   cl::Buffer bufferProd1 = context.createBuffer("prod1", sizeof(LargeProduct) * M, CL_MEM_READ_WRITE);
@@ -32,6 +33,7 @@ void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, con
 
   std::stringstream options_stream;
   options_stream << " -DMULS_PER_EXPONENT_EXTRACTION=" << MULS_PER_EXPONENT_EXTRACTION;
+  options_stream << " -DELEMENTS_PER_WORKITEM=" << ELEMENTS_PER_WORKITEM;
   options_stream << " -DWORKGROUP_SIZE=" << workgroupSize;
   options_stream << " -DVECTOR_SIZE=" << N;
 	options_stream << " -cl-std=CL2.0 ";
@@ -67,7 +69,7 @@ void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, con
     kernel_prod_diff_realrealvec.setArg(4, bufferProd1);
     kernel_prod_diff_realrealvec.setArg(5, bufferProd2);
 
-    size_t workItems = (N + MULS_PER_EXPONENT_EXTRACTION - 1) / MULS_PER_EXPONENT_EXTRACTION;
+    size_t workItems = (N + ELEMENTS_PER_WORKITEM - 1) / ELEMENTS_PER_WORKITEM;
 
     cl_int err = queue.enqueueNDRangeKernel(
             kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(workItems, M), cl::NDRange(workgroupSize, 1), nullptr, nullptr);
@@ -173,5 +175,24 @@ Memory read rate: 297.322 GB/s
 64bit flops: 74.3305 /s
 Result matches expectation :-)
 
+M = 64 , N= 131072
+Total time: 35.054
+prod: 1.34437 * 2^16862534
+Memory read rate: 250.93 GB/s
+64bit flops: 62.7324 /s
+
+M = 32 , N= 262144
+Total time: 71.6696
+prod: -1.05587 * 2^53059519
+Memory read rate: 245.462 GB/s
+64bit flops: 61.3656 /s
+
+
+ M = 256 , N= 131072
+Total time: 114.884
+prod: -1.60203 * 2^16862532
+Memory read rate: 306.261 GB/s
+64bit flops: 76.5652 /s
+Invalid result!
 
 */
