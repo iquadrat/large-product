@@ -31,6 +31,8 @@ public:
       setup();
       copyReadOnlyBuffers(x);
 
+      benchmark_iteration();
+
       std::mt19937_64 gen(2023);
       std::uniform_real_distribution<double> distu(0.0, 1.0);
 
@@ -43,7 +45,7 @@ public:
 
         schedule_iteration(i, u1, u2);
 
-        if (i % 1024 == 0) {
+        if (i % 1024*16 == 0) {
           print_intermediate_result(i);
         }
       }
@@ -57,7 +59,7 @@ public:
 private:
     const size_t workgroupSize = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
-    const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
+    const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 7;
 
     OpenClContext& context;
 
@@ -116,6 +118,49 @@ private:
       timer.reset();
     }
 
+    void benchmark_iteration() {
+        const int32_t runs = 10;
+        const int32_t iterationsPerRun = 1000;
+
+        run_benchmark(iterationsPerRun);
+
+        double sum = 0;
+        double sumSq = 0;
+        for(int32_t run = 0; run < runs; run++) {
+          double t = run_benchmark(iterationsPerRun) / iterationsPerRun;
+          sum += t;
+          sumSq += t*t;
+        }
+
+        double mean = sum / runs;
+        double stddev = sqrt(sumSq / runs + mean * mean);
+
+        std::cout << "Benchmark results: \n  Iteration time: " << mean << " stddev: " << stddev << std::endl;
+        double bytesRead = 1.0 * sizeof(double) * N * M;
+        double flops = 1.0 * N * M * 2.0; /* 2 ops per vector element */
+        std::cout << "  Memory read rate: " << bytesRead / mean / 1e9 << " GB/s" << std::endl;
+        std::cout << "  64bit flops: " << flops / mean / 1e9 << " /s" << std::endl;
+    }
+
+    double run_benchmark(int32_t iterations) {
+      std::mt19937_64 gen(1);
+      std::uniform_real_distribution<double> distu(0.0, 1.0);
+
+      reset();
+      queue.finish();
+
+      timer.start();
+      for(int i = 0; i< iterations; ++i) {
+        double u1 = distu(gen) * 2 - 1; // TODO: Pass one u1/u2 for each M
+        double u2 = distu(gen) * 2 - 1;
+        schedule_iteration(i, u1, u2);
+      }
+
+      queue.finish();
+      timer.stopAndAddTime();
+      return timer.getTimeElapsed();
+    }
+
     void schedule_iteration(int32_t k, double u1, double u2) {
       kernel_prod_diff_realrealvec.setArg(0, k);
       kernel_prod_diff_realrealvec.setArg(1, u1);
@@ -145,9 +190,6 @@ private:
     }
 
     void print_result() {
-      queue.finish();
-      timer.stopAndAddTime();
-
       std::cout << "M = " << M << " , N= " << N << std::endl;
       std::cout << "Total time: " << timer.getTimeElapsed() << std::endl;
 
