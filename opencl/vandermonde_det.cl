@@ -65,8 +65,9 @@ __kernel void prod_diff_realrealvec(
   double prod2 = 1.0;
 
   // TODO: Handle case where N is not a multiple of MULS_PER_EXPONENT_EXTRACTION
-  for(int i = 0; i < 1; i++) {
-      int64_t offset = group_offset + i * get_local_size(0) + get_local_id(0);
+  for(int i = 0; i < MULS_PER_EXPONENT_EXTRACTION; i++) {
+      //int64_t offset = group_offset + i * get_local_size(0) + get_local_id(0);
+    int64_t offset = group_offset + get_local_id(0) * MULS_PER_EXPONENT_EXTRACTION + i;
       if (offset != k) {
           prod1 *= u1 - x[offset];
           prod2 *= u2 - x[offset];
@@ -85,6 +86,5 @@ __kernel void prod_diff_realrealvec(
     atomic_mul(&g_prod2->prod, prod2);
     atomic_add(&g_prod1->exponent, exponent1);
     atomic_add(&g_prod2->exponent, exponent2);
-
   }
 }
