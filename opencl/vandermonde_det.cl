@@ -98,8 +98,9 @@ void prod_diff_realrealvec(
         int32_t kWorkGroup
 ) {
   int32_t m = get_global_id(1);
-  int32_t group_offset = VECTOR_SIZE * m + get_group_id(0) * WORKGROUP_SIZE * ELEMENTS_PER_WORKITEM;
   const uint32_t lid = get_local_id(0);
+
+  int32_t offset = VECTOR_SIZE * m + get_group_id(0) * WORKGROUP_SIZE * ELEMENTS_PER_WORKITEM + lid;
 
   double prod1 = 1.0;
   double prod2 = 1.0;
@@ -108,30 +109,28 @@ void prod_diff_realrealvec(
 
   // TODO: Handle case where N is not a multiple of MULS_PER_EXPONENT_EXTRACTION
   if (get_group_id(0) != kWorkGroup) {
-    for (int j = 0; j < ELEMENTS_PER_WORKITEM / MULS_PER_EXPONENT_EXTRACTION; ++j) {
-      for (int i = 0; i < MULS_PER_EXPONENT_EXTRACTION; i++) {
-        int32_t offset = group_offset + j * MULS_PER_EXPONENT_EXTRACTION * WORKGROUP_SIZE + i * WORKGROUP_SIZE + lid;
-        prod1 *= u1 - x[offset];
-        prod2 *= u2 - x[offset];
-        offset += WORKGROUP_SIZE;
-      }
+    for (int i = 0; i < ELEMENTS_PER_WORKITEM; ++i) {
+      prod1 *= u1 - x[offset];
+      prod2 *= u2 - x[offset];
+      offset += WORKGROUP_SIZE;
 
-      exponent1 += normalize_exponent(&prod1);
-      exponent2 += normalize_exponent(&prod2);
+      if (i % MULS_PER_EXPONENT_EXTRACTION == MULS_PER_EXPONENT_EXTRACTION - 1) {
+        exponent1 += normalize_exponent(&prod1);
+        exponent2 += normalize_exponent(&prod2);
+      }
     }
   } else {
-    for (int j = 0; j < ELEMENTS_PER_WORKITEM / MULS_PER_EXPONENT_EXTRACTION; ++j) {
-      for (int i = 0; i < MULS_PER_EXPONENT_EXTRACTION; i++) {
-        int32_t offset = group_offset + j * MULS_PER_EXPONENT_EXTRACTION * WORKGROUP_SIZE + i * WORKGROUP_SIZE + lid;
-        if (offset != k) {
-          prod1 *= u1 - x[offset];
-          prod2 *= u2 - x[offset];
-        }
-        offset += WORKGROUP_SIZE;
+    for (int i = 0; i < ELEMENTS_PER_WORKITEM; ++i) {
+      if (offset != k) {
+        prod1 *= u1 - x[offset];
+        prod2 *= u2 - x[offset];
       }
+      offset += WORKGROUP_SIZE;
 
-      exponent1 += normalize_exponent(&prod1);
-      exponent2 += normalize_exponent(&prod2);
+      if (i % MULS_PER_EXPONENT_EXTRACTION == MULS_PER_EXPONENT_EXTRACTION - 1) {
+        exponent1 += normalize_exponent(&prod1);
+        exponent2 += normalize_exponent(&prod2);
+      }
     }
   }
 

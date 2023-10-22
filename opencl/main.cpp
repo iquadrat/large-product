@@ -230,18 +230,7 @@ std::vector<double> init_random_positions(const long int N, const double a, cons
   return result;
 }
 
-
-int32_t normalize_exponent(double* prod) {
-  int32_t exponent;
-  *prod = frexp(*prod, &exponent);
-  return exponent;
-}
-
 int main(int argc, char** argv) {
-  double prod = 99;
-  int32_t e = normalize_exponent(&prod);
-  std::cout << prod << " * 2 ^ " << e << std::endl;
-
   if (argc!=3) {
     std::cout << argv[0] << "M N\n";
     std::cout << "M number of parallel runs, N number of particles\n";
