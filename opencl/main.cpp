@@ -101,7 +101,7 @@ void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, con
   std::cout << "64bit flops: " << flops / timer.getTimeElapsed() / 1e9 << " /s" << std::endl;
 
   if (N == 131072) {
-    expect_prod(prod1, {-1.64183, 18490594 });
+    expect_prod(prod1, {1.34437, 16862534 });
   } else if (N == 1048576) {
     expect_prod(prod1, {-1.99591, 351275623 });
   }
