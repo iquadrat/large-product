@@ -28,7 +28,11 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
   std::string common_options = options_stream.str();
 
   cl::Program program = context.createProgram("vandermonde", files, common_options);
-  cl::Kernel kernel = context.createKernel(program, "prod_diff_realrealvec");
+  cl::Kernel kernel_prod_diff_realrealvec = context.createKernel(program, "prod_diff_realrealvec");
+
+  cl::Kernel kernel_prod_normalize = context.createKernel(program, "prod_normalize");
+  kernel_prod_normalize.setArg(0, bufferProd1);
+  kernel_prod_normalize.setArg(1, bufferProd2);
 
   auto queue = context.createQueue();
 
@@ -38,7 +42,6 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
   queue.enqueueWriteBuffer(bufferProd2, true, 0, sizeof(LargeProduct), &prod2);
   queue.enqueueWriteBuffer(bufferX, true, 0, sizeof(double) * N, &x[0]);
 
-
   std::uniform_real_distribution<double> distu(0.0, 1.0);
 
   Timer timer;
@@ -47,20 +50,23 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
     double u1 = distu(gen)*2-1;
     double u2 = distu(gen)*2-1;
 
-    kernel.setArg(0, i);
-    kernel.setArg(1, u1);
-    kernel.setArg(2, u2);
-    kernel.setArg(3, bufferX);
-    kernel.setArg(4, bufferProd1);
-    kernel.setArg(5, bufferProd2);
+    kernel_prod_diff_realrealvec.setArg(0, i);
+    kernel_prod_diff_realrealvec.setArg(1, u1);
+    kernel_prod_diff_realrealvec.setArg(2, u2);
+    kernel_prod_diff_realrealvec.setArg(3, bufferX);
+    kernel_prod_diff_realrealvec.setArg(4, bufferProd1);
+    kernel_prod_diff_realrealvec.setArg(5, bufferProd2);
 
     size_t workItems = (N + MULS_PER_EXPONENT_EXTRACTION - 1) / MULS_PER_EXPONENT_EXTRACTION;
 
     cl_int err = queue.enqueueNDRangeKernel(
-            kernel, cl::NullRange, cl::NDRange(workItems), cl::NDRange(workgroupSize), nullptr, nullptr);
+            kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(workItems), cl::NDRange(workgroupSize), nullptr, nullptr);
     context.checkErr(err, "kernel");
-    queue.finish();
 
+    err = queue.enqueueNDRangeKernel(
+            kernel_prod_normalize, cl::NullRange, cl::NDRange((size_t)1), cl::NDRange((size_t)64), nullptr, nullptr);
+
+    queue.finish();
 
     if (i % 1 == 0) {
       queue.enqueueReadBuffer(bufferProd1, CL_TRUE, 0, sizeof(prod1), &prod1);

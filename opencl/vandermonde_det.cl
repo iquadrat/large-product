@@ -34,6 +34,23 @@ void atomic_mul(volatile __global double *source, const double mul) {
     } while(atom_cmpxchg((volatile __global uint64_t*)source, prev.u64, updated.u64) != prev.u64);
 }
 
+__kernel void prod_normalize(
+        __global struct LargeProduct *g_prod1,
+        __global struct LargeProduct *g_prod2
+) {
+  double prod1 = g_prod1->prod;
+  double prod2 = g_prod2->prod;
+
+  int32_t exponent1 = normalize_exponent(&prod1);
+  int32_t exponent2 = normalize_exponent(&prod2);
+
+  g_prod1->prod = prod1;
+  g_prod1->exponent += exponent1;
+
+  g_prod2->prod = prod2;
+  g_prod2->exponent += exponent2;
+}
+
 __kernel void prod_diff_realrealvec(
         const int32_t k,
         const double u1,
