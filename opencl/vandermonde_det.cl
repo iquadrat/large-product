@@ -62,21 +62,22 @@ __kernel void prod_divide(
 
 void horizontal_reduce(__local int32_t* exponents, __local double* products, int32_t exponent, double product) {
   const uint32_t lid = get_local_id(0);
-  exponents[lid] = exponent;
-  products[lid] = product;
-
-  barrier(CLK_LOCAL_MEM_FENCE);
 
   // local memory reduction
-  int i = 128;
-  if(lid < i) {
-    exponents[lid] += exponents[lid + i];
-    products[lid]  *= products[lid + i];
+  if (lid >= 128) {
+    exponents[lid - 128] = exponent;
+    products[lid - 128] = product;
+  }
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  if(lid < 128) {
+    exponents[lid] = exponent + exponents[lid];
+    products[lid]  = product * products[lid];
   }
   barrier(CLK_LOCAL_MEM_FENCE);
 
   // wavefront reduction
-  i = 64;
+  int i = 64;
   for(; i>0; i /= 2) {
     if(lid < i) {
       exponents[lid] += exponents[lid + i];
@@ -118,8 +119,8 @@ void prod_diff_realrealvec(
     exponent2 += normalize_exponent(&prod2);
   }
 
-  __local int32_t exponents[WORKGROUP_SIZE];
-  __local double products[WORKGROUP_SIZE];
+  __local int32_t exponents[WORKGROUP_SIZE / 2];
+  __local double products[WORKGROUP_SIZE / 2];
 
   horizontal_reduce(exponents, products, exponent1, prod1);
   if (lid == 0) {
