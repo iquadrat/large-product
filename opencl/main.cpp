@@ -24,6 +24,7 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
 
   std::stringstream options_stream;
   options_stream << " -DMULS_PER_EXPONENT_EXTRACTION=" << MULS_PER_EXPONENT_EXTRACTION;
+  options_stream << " -DWORKGROUP_SIZE=" << workgroupSize;
 	options_stream << " -cl-std=CL2.0 ";
   std::string common_options = options_stream.str();
 
@@ -58,13 +59,12 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
     kernel_prod_diff_realrealvec.setArg(5, bufferProd2);
 
     size_t workItems = (N + MULS_PER_EXPONENT_EXTRACTION - 1) / MULS_PER_EXPONENT_EXTRACTION;
+    std::cout << "work items: " << workItems << std::endl;
 
     cl_int err = queue.enqueueNDRangeKernel(
             kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(workItems), cl::NDRange(workgroupSize), nullptr, nullptr);
     context.checkErr(err, "kernel");
 
-    err = queue.enqueueNDRangeKernel(
-            kernel_prod_normalize, cl::NullRange, cl::NDRange((size_t)1), cl::NDRange((size_t)64), nullptr, nullptr);
 
     queue.finish();
 
@@ -77,6 +77,10 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
       std::cout << "prod1: " << prod1.prod << " * 2^" << prod1.exponent << std::endl;
       std::cout << "prod2: " << prod2.prod << " * 2^" << prod2.exponent << std::endl;
     }
+
+    err = queue.enqueueNDRangeKernel(
+            kernel_prod_normalize, cl::NullRange, cl::NDRange((size_t)1), cl::NDRange((size_t)64), nullptr, nullptr);
+
   }
 
   queue.finish();
