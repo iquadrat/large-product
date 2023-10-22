@@ -65,7 +65,7 @@ public:
 
 // **************************************************************************
 
-constexpr const int REPETITIONS = 5;
+constexpr const int REPETITIONS = 1;
 
 int main(int argc, char *argv[]) {
   gen = std::mt19937_64();
