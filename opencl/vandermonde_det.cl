@@ -18,15 +18,18 @@ typedef union {
     double f64;
 } double_cast;
 
+//#define NORMALIZE_EXPONENT_USING_FREXP
+
 int32_t normalize_exponent(double* prod) {
+#ifdef NORMALIZE_EXPONENT_USING_FREXP
+  int32_t exponent;
+  *prod = frexp(*prod, &exponent);
+#else
   double_cast* cast_prod = (double_cast*)prod;
   int32_t exponent = (((*cast_prod).u64 & EXPONENT_MASK) >> 52) - EXPONENT_BIAS;
   (*cast_prod).u64 = ((*cast_prod).u64 & ~EXPONENT_MASK) | EXPONENT_RESET_MASK;
+#endif
   return exponent;
-//  int32_t exponent;
-//  prod = frexp(prod, exponent);
-//  return exponent;
-
 }
 
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
