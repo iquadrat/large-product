@@ -68,16 +68,15 @@ void horizontal_reduce(__local int32_t* exponents, __local double* products, int
   barrier(CLK_LOCAL_MEM_FENCE);
 
   // local memory reduction
-  int i = WORKGROUP_SIZE/2;
-  for(; i>WAVEFRONT_SIZE; i /= 2) {
-    if(lid < i) {
-      exponents[lid] += exponents[lid + i];
-      products[lid]  *= products[lid + i];
-    }
-    barrier(CLK_LOCAL_MEM_FENCE);
+  int i = 128;
+  if(lid < i) {
+    exponents[lid] += exponents[lid + i];
+    products[lid]  *= products[lid + i];
   }
+  barrier(CLK_LOCAL_MEM_FENCE);
 
   // wavefront reduction
+  i = 64;
   for(; i>0; i /= 2) {
     if(lid < i) {
       exponents[lid] += exponents[lid + i];
@@ -86,7 +85,7 @@ void horizontal_reduce(__local int32_t* exponents, __local double* products, int
   }
 }
 
-__kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
+__kernel __attribute__((reqd_work_group_size(256, 1, 1)))
 void prod_diff_realrealvec(
         const int32_t k,
         const double u1,
