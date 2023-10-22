@@ -18,67 +18,124 @@ void expect_prod(LargeProduct actual, LargeProduct expected) {
     }
 }
 
-void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, const std::vector<double>& x) {
-  const size_t workgroupSize = 256;
-  const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
-  const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 11;
+class LargeProductOpenCl {
 
-  cl::Buffer bufferX = context.createBuffer("x", sizeof(double) * N * M + 10000, CL_MEM_READ_ONLY);
-  cl::Buffer bufferProd1 = context.createBuffer("prod1", sizeof(LargeProduct) * M, CL_MEM_READ_WRITE);
-  cl::Buffer bufferProd2 = context.createBuffer("prod2", sizeof(LargeProduct) * M, CL_MEM_READ_WRITE);
+public:
+    LargeProductOpenCl(OpenClContext& context): context(context) {
 
-  std::vector<std::string> files;
-  files.push_back("large_product.h");
-  files.push_back("vandermonde_det.cl");
+    }
 
-  std::stringstream options_stream;
-  options_stream << " -DMULS_PER_EXPONENT_EXTRACTION=" << MULS_PER_EXPONENT_EXTRACTION;
-  options_stream << " -DELEMENTS_PER_WORKITEM=" << ELEMENTS_PER_WORKITEM;
-  options_stream << " -DWORKGROUP_SIZE=" << workgroupSize;
-  options_stream << " -DVECTOR_SIZE=" << N;
-	options_stream << " -cl-std=CL2.0 ";
-  std::string common_options = options_stream.str();
+    void run(int32_t M, int32_t N, const std::vector<double>& x) {
+      this->M = M;
+      this->N = N;
+      setup();
+      copyReadOnlyBuffers(x);
 
-  cl::Program program = context.createProgram("vandermonde", files, common_options);
-  cl::Kernel kernel_prod_diff_realrealvec = context.createKernel(program, "prod_diff_realrealvec");
+      std::mt19937_64 gen(2023);
+      std::uniform_real_distribution<double> distu(0.0, 1.0);
 
-  cl::Kernel kernel_prod_divide = context.createKernel(program, "prod_divide");
-  kernel_prod_divide.setArg(0, bufferProd1);
-  kernel_prod_divide.setArg(1, bufferProd2);
+      reset();
+      timer.start();
 
-  auto queue = context.createQueue();
+      for(int32_t i = 0; i < N; ++i) {
+        double u1 = distu(gen) * 2 - 1; // TODO: Pass one u1/u2 for each M
+        double u2 = distu(gen) * 2 - 1;
 
-  std::vector<LargeProduct> prod_init(M, { 1.0, 0 });
-  queue.enqueueWriteBuffer(bufferProd1, true, 0, sizeof(LargeProduct) * M, &prod_init);
-  queue.enqueueWriteBuffer(bufferProd2, true, 0, sizeof(LargeProduct) * M, &prod_init);
-  queue.enqueueWriteBuffer(bufferX, true, 0, sizeof(double) * N * M, &x[0]);
+        schedule_iteration(i, u1, u2);
 
-  std::mt19937_64 gen(2023);
-  std::uniform_real_distribution<double> distu(0.0, 1.0);
+        if (i % 1024 == 0) {
+          print_intermediate_result(i);
+        }
+      }
 
-  Timer timer;
-  timer.start();
-  for(int32_t i = 0; i < N; ++i) {
-    double u1 = distu(gen)*2-1; // TODO: Pass one u1/u2 for each M
-    double u2 = distu(gen)*2-1;
+      queue.finish();
+      timer.stopAndAddTime();
 
-    kernel_prod_diff_realrealvec.setArg(0, i);
-    kernel_prod_diff_realrealvec.setArg(1, u1);
-    kernel_prod_diff_realrealvec.setArg(2, u2);
-    kernel_prod_diff_realrealvec.setArg(3, bufferX);
-    kernel_prod_diff_realrealvec.setArg(4, bufferProd1);
-    kernel_prod_diff_realrealvec.setArg(5, bufferProd2);
+      print_result();
+    }
 
-    size_t workItems = (N + ELEMENTS_PER_WORKITEM - 1) / ELEMENTS_PER_WORKITEM;
+private:
+    const size_t workgroupSize = 256;
+    const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
+    const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
 
-    cl_int err = queue.enqueueNDRangeKernel(
-            kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(workItems, M), cl::NDRange(workgroupSize, 1), nullptr, nullptr);
-    context.checkErr(err, "kernel");
+    OpenClContext& context;
 
-    err = queue.enqueueNDRangeKernel(
-            kernel_prod_divide, cl::NullRange, cl::NDRange((size_t)M), cl::NDRange((size_t)64), nullptr, nullptr);
+    int32_t M;
+    int32_t N;
 
-    if (i % 1024 == 0) {
+    cl::Buffer bufferX;
+    cl::Buffer bufferProd1;
+    cl::Buffer bufferProd2;
+    std::vector<LargeProduct> prod_init;
+
+    cl::Program program;
+    cl::Kernel kernel_prod_diff_realrealvec;
+    cl::Kernel kernel_prod_divide;
+
+    cl::CommandQueue queue;
+
+    Timer timer;
+
+    void setup() {
+      bufferX = context.createBuffer("x", sizeof(double) * N * M + 10000, CL_MEM_READ_ONLY);
+      bufferProd1 = context.createBuffer("prod1", sizeof(LargeProduct) * M, CL_MEM_READ_WRITE);
+      bufferProd2 = context.createBuffer("prod2", sizeof(LargeProduct) * M, CL_MEM_READ_WRITE);
+
+      std::vector<std::string> files;
+      files.push_back("large_product.h");
+      files.push_back("vandermonde_det.cl");
+
+      std::stringstream options_stream;
+      options_stream << " -DMULS_PER_EXPONENT_EXTRACTION=" << MULS_PER_EXPONENT_EXTRACTION;
+      options_stream << " -DELEMENTS_PER_WORKITEM=" << ELEMENTS_PER_WORKITEM;
+      options_stream << " -DWORKGROUP_SIZE=" << workgroupSize;
+      options_stream << " -DVECTOR_SIZE=" << N;
+      options_stream << " -cl-std=CL2.0 ";
+      std::string common_options = options_stream.str();
+
+      program = context.createProgram("vandermonde", files, common_options);
+      kernel_prod_diff_realrealvec = context.createKernel(program, "prod_diff_realrealvec");
+
+      kernel_prod_divide = context.createKernel(program, "prod_divide");
+      kernel_prod_divide.setArg(0, bufferProd1);
+      kernel_prod_divide.setArg(1, bufferProd2);
+
+      queue = context.createQueue();
+
+      prod_init = std::vector<LargeProduct>(M, { 1.0, 0 });
+    }
+
+    void copyReadOnlyBuffers(const std::vector<double>& x) {
+      queue.enqueueWriteBuffer(bufferX, true, 0, sizeof(double) * N * M, &x[0]);
+    }
+
+    void reset() {
+      queue.enqueueWriteBuffer(bufferProd1, true, 0, sizeof(LargeProduct) * M, &prod_init);
+      queue.enqueueWriteBuffer(bufferProd2, true, 0, sizeof(LargeProduct) * M, &prod_init);
+      timer.reset();
+    }
+
+    void schedule_iteration(int32_t k, double u1, double u2) {
+      kernel_prod_diff_realrealvec.setArg(0, k);
+      kernel_prod_diff_realrealvec.setArg(1, u1);
+      kernel_prod_diff_realrealvec.setArg(2, u2);
+      kernel_prod_diff_realrealvec.setArg(3, bufferX);
+      kernel_prod_diff_realrealvec.setArg(4, bufferProd1);
+      kernel_prod_diff_realrealvec.setArg(5, bufferProd2);
+
+      size_t workItems = (N + ELEMENTS_PER_WORKITEM - 1) / ELEMENTS_PER_WORKITEM;
+
+      cl_int err = queue.enqueueNDRangeKernel(
+              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(workItems, M), cl::NDRange(workgroupSize, 1), nullptr, nullptr);
+      context.checkErr(err, "kernel");
+
+      err = queue.enqueueNDRangeKernel(
+              kernel_prod_divide, cl::NullRange, cl::NDRange((size_t)M), cl::NDRange((size_t)64), nullptr, nullptr);
+
+    }
+
+    void print_intermediate_result(int32_t i) {
       queue.finish();
       LargeProduct prod;
       queue.enqueueReadBuffer(bufferProd1, CL_TRUE, 0, sizeof(LargeProduct), &prod);
@@ -87,28 +144,36 @@ void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, con
       std::cout << prod.prod << " * 2^" << prod.exponent << std::endl;
     }
 
-  }
+    void print_result() {
+      queue.finish();
+      timer.stopAndAddTime();
 
-  queue.finish();
-  timer.stopAndAddTime();
+      std::cout << "M = " << M << " , N= " << N << std::endl;
+      std::cout << "Total time: " << timer.getTimeElapsed() << std::endl;
 
-  std::cout << "M = " << M << " , N= " << N << std::endl;
-  std::cout << "Total time: " << timer.getTimeElapsed() << std::endl;
+      LargeProduct prod;
+      queue.enqueueReadBuffer(bufferProd1, CL_TRUE, 0, sizeof(LargeProduct), &prod);
+      std::cout << "prod: " << prod.prod << " * 2^" << prod.exponent << std::endl;
 
-  LargeProduct prod;
-  queue.enqueueReadBuffer(bufferProd1, CL_TRUE, 0, sizeof(LargeProduct), &prod);
-  std::cout << "prod: " << prod.prod << " * 2^" << prod.exponent << std::endl;
+      double bytesRead = 1.0 * sizeof(double) * N * N * M;
+      double flops = 1.0 * N * N * M * 2.0; /* 2 ops per vector element */
+      std::cout << "Memory read rate: " << bytesRead / timer.getTimeElapsed() / 1e9 << " GB/s" << std::endl;
+      std::cout << "64bit flops: " << flops / timer.getTimeElapsed() / 1e9 << " /s" << std::endl;
 
-  double bytesRead = 1.0 * sizeof(double) * N * N * M;
-  double flops = 1.0 * N * N * M * 2.0; /* 2 ops per vector element */
-  std::cout << "Memory read rate: " << bytesRead / timer.getTimeElapsed() / 1e9 << " GB/s" << std::endl;
-  std::cout << "64bit flops: " << flops / timer.getTimeElapsed() / 1e9 << " /s" << std::endl;
+      if (N == 131072) {
+        expect_prod(prod, {1.34437, 16862534 });
+      } else if (N == 1048576) {
+        expect_prod(prod, {-1.99591, 351275623 });
+      }
+    }
 
-  if (N == 131072) {
-    expect_prod(prod, {1.34437, 16862534 });
-  } else if (N == 1048576) {
-    expect_prod(prod, {-1.99591, 351275623 });
-  }
+};
+
+
+
+void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, const std::vector<double>& x) {
+  LargeProductOpenCl runner(context);
+  runner.run(M, N, x);
 }
 
 // Creates vector with random values in (a,b)
@@ -206,5 +271,20 @@ Total time: 114.884
 prod: -1.60203 * 2^16862532
 Memory read rate: 306.261 GB/s
 64bit flops: 76.5652 /s
+
+M = 16 , N= 1048576
+Total time: 491.481
+prod: -1.71187 * 2^350895099
+Memory read rate: 286.354 GB/s
+64bit flops: 71.5885 /s
+Invalid result!
+
+
+ M = 256 , N= 131072
+Total time: 121.823
+prod: 1.34437 * 2^16862534
+Memory read rate: 288.816 GB/s
+64bit flops: 72.204 /s
+
 
 */
