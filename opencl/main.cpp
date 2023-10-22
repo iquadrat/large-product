@@ -18,8 +18,7 @@ void expect_prod(LargeProduct actual, LargeProduct expected) {
     }
 }
 
-void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>& x, std::mt19937_64& gen) {
-  size_t N = x.size();
+void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, const std::vector<double>& x) {
   const size_t workgroupSize = 256;
   const int64_t MULS_PER_EXPONENT_EXTRACTION = 16;
 
@@ -52,6 +51,7 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
   queue.enqueueWriteBuffer(bufferProd2, true, 0, sizeof(LargeProduct), &prod2);
   queue.enqueueWriteBuffer(bufferX, true, 0, sizeof(double) * N, &x[0]);
 
+  std::mt19937_64 gen(2023);
   std::uniform_real_distribution<double> distu(0.0, 1.0);
 
   Timer timer;
@@ -96,14 +96,14 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
   std::cout << "prod: " << prod1.prod << " * 2^" << prod1.exponent << std::endl;
 
   double bytesRead = 1.0 * sizeof(double) * N * N;
-  double flops = 1.0 * sizeof(double) * N * N * 2.0; /* 2 ops per vector element */
+  double flops = 1.0 * N * N * 2.0; /* 2 ops per vector element */
   std::cout << "Memory read rate: " << bytesRead / timer.getTimeElapsed() / 1e9 << " GB/s" << std::endl;
   std::cout << "64bit flops: " << flops / timer.getTimeElapsed() / 1e9 << " /s" << std::endl;
 
   if (N == 131072) {
-    expect_prod(prod1, {1.88272, -37696542});
+    expect_prod(prod1, {-1.64183, 18490594 });
   } else if (N == 1048576) {
-    expect_prod(prod1, {-1.39209, -139635901});
+    expect_prod(prod1, {-1.99591, 351275623 });
   }
 }
 
@@ -133,9 +133,35 @@ int main(int argc, char** argv) {
 
   OpenClContext context(config);
 
-  std::mt19937_64 gen(42);
-  std::vector x = init_random_positions(N, -1, 1, gen);
-  std::vector y = init_random_positions(N, -1, 1, gen);
+  std::mt19937_64 init_gen(42);
+  std::vector x = init_random_positions(M * N, -1, 1, init_gen);
+//  std::vector y = init_random_positions(M * N, -1, 1, init_gen);
 
-  run_prod_diff_realrealvec(context, x, gen);
+  run_prod_diff_realrealvec(context, M, N, x);
 }
+
+
+/*
+Results
+
+N = 1048576, MULS_PER_EXPONENT_EXTRACTION = 32
+Total time: 119.198
+prod: -1.39209 * 2^-139635901
+Memory read rate: 73.794 GB/s
+64bit flops: 147.588 / 8 /s
+Result matches expectation :-)
+
+N = 1048576
+Total time: 164.358
+prod: -1.99591 * 2^351275623
+Memory read rate: 53.518 GB/s
+64bit flops: 13.3795 /s
+
+N = 131072
+Total time: 6.00041
+prod: 1.88272 * 2^-37696542
+Memory read rate: 22.9049 GB/s
+64bit flops: 5.72623 /s
+Result matches expectation :-)
+
+*/

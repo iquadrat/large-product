@@ -21,7 +21,6 @@ void prod_diff_realrealvec(
         LargeExponentFloat& prod1,
         LargeExponentFloat& prod2
 ) {
-//  N = MULS_PER_EXPONENT_EXTRACTION * 256;
   const int64_t ELEMENTS_PER_LOOP = 4 * 4;
   assert(k >= 0);
   assert(reinterpret_cast<uintptr_t>(x) % 32 == 0);

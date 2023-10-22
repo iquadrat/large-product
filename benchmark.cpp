@@ -5,11 +5,9 @@
 
 using namespace std;
 
-static std::mt19937_64 gen;
-static std::uniform_real_distribution<double> distu(0.0, 1.0);
-
 // fills array x with random values in (a,b)
-void init_random_positions(const long int N, const double a, const double b, double * x) {
+void init_random_positions(std::mt19937_64& gen, const long int N, const double a, const double b, double * x) {
+  std::uniform_real_distribution<double> distu(0.0, 1.0);
   for (int j=0; j<N; j++) {
     x[j]=distu(gen)*(b-a)+a;
   }
@@ -65,11 +63,9 @@ public:
 
 // **************************************************************************
 
-constexpr const int REPETITIONS = 1;
+constexpr const int REPETITIONS = 2;
 
 int main(int argc, char *argv[]) {
-  gen = std::mt19937_64(42);
-
   if (argc!=3) {
     cout << argv[0] << "M N\n";
     cout << "M number of runs, N number of particles\n";
@@ -83,12 +79,16 @@ int main(int argc, char *argv[]) {
   double * x = new_double_array(N);
   double * y = new_double_array(N);
 
-  init_random_positions(N,-1,1,x);
-  init_random_positions(N,-1,1,y);
+  std::mt19937_64 init_gen(42);
+  init_random_positions(init_gen, N,-1,1,x);
+  init_random_positions(init_gen, N,-1,1,y);
 
   stopwatch timing;
 
   for(int rep = 0; rep < REPETITIONS; ++rep) {
+    std::mt19937_64 gen(2023);
+    std::uniform_real_distribution<double> distu(0.0, 1.0);
+
     LargeExponentFloat prod(1.0);
     LargeExponentFloat prod0(1.0);
 
@@ -114,6 +114,9 @@ int main(int argc, char *argv[]) {
   }
 
   for(int rep = 0; rep < REPETITIONS; ++rep) {
+    std::mt19937_64 gen(2023);
+    std::uniform_real_distribution<double> distu(0.0, 1.0);
+
     LargeExponentFloat prod(1.0);
     LargeExponentFloat prod0(1.0);
 
@@ -133,6 +136,9 @@ int main(int argc, char *argv[]) {
   }
 
   for(int rep = 0; rep < REPETITIONS; ++rep) {
+    std::mt19937_64 gen(2023);
+    std::uniform_real_distribution<double> distu(0.0, 1.0);
+
     LargeExponentFloat prod(1.0);
     LargeExponentFloat prod0(1.0);
 
@@ -150,6 +156,9 @@ int main(int argc, char *argv[]) {
   }
 
   for(int rep = 0; rep < REPETITIONS; ++rep) {
+    std::mt19937_64 gen(2023);
+    std::uniform_real_distribution<double> distu(0.0, 1.0);
+
     LargeExponentFloat prod(1.0);
     LargeExponentFloat prod0(1.0);
 
