@@ -82,16 +82,13 @@ void prod_diff_realrealvec(
         __global struct LargeProduct *g_prod1,
         __global struct LargeProduct *g_prod2
 ) {
-  if (get_global_id(1) != 0) {
-    return;
-  }
-
-  const uint32_t lid = get_local_id(0);
-  int32_t group_offset = get_group_id(0) * WORKGROUP_SIZE * MULS_PER_EXPONENT_EXTRACTION;
+  int32_t m = get_global_id(1);
+  int32_t group_offset = VECTOR_SIZE * m + get_group_id(0) * WORKGROUP_SIZE * MULS_PER_EXPONENT_EXTRACTION;
 
   double prod1 = 1.0;
   double prod2 = 1.0;
 
+  const uint32_t lid = get_local_id(0);
   // TODO: Handle case where N is not a multiple of MULS_PER_EXPONENT_EXTRACTION
   for(int i = 0; i < MULS_PER_EXPONENT_EXTRACTION; i++) {
       int32_t offset = group_offset + i * WORKGROUP_SIZE + lid;
@@ -123,9 +120,9 @@ void prod_diff_realrealvec(
     exponent1 += normalize_exponent(&prod1);
     exponent2 += normalize_exponent(&prod2);
 
-    atomic_mul(&g_prod1->prod, prod1);
-    atomic_mul(&g_prod2->prod, prod2);
-    atomic_add(&g_prod1->exponent, exponent1);
-    atomic_add(&g_prod2->exponent, exponent2);
+    atomic_mul(&g_prod1[m].prod, prod1);
+    atomic_mul(&g_prod2[m].prod, prod2);
+    atomic_add(&g_prod1[m].exponent, exponent1);
+    atomic_add(&g_prod2[m].exponent, exponent2);
   }
 }

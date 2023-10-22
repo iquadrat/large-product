@@ -33,6 +33,7 @@ void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, con
   std::stringstream options_stream;
   options_stream << " -DMULS_PER_EXPONENT_EXTRACTION=" << MULS_PER_EXPONENT_EXTRACTION;
   options_stream << " -DWORKGROUP_SIZE=" << workgroupSize;
+  options_stream << " -DVECTOR_SIZE=" << N;
 	options_stream << " -cl-std=CL2.0 ";
   std::string common_options = options_stream.str();
 
@@ -89,6 +90,7 @@ void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, con
   queue.finish();
   timer.stopAndAddTime();
 
+  std::cout << "M = " << M << " , N= " << N << std::endl;
   std::cout << "Total time: " << timer.getTimeElapsed() << std::endl;
 
   LargeProduct prod;
@@ -163,5 +165,13 @@ prod: 1.88272 * 2^-37696542
 Memory read rate: 22.9049 GB/s
 64bit flops: 5.72623 /s
 Result matches expectation :-)
+
+M = 128, N = 131072
+ Total time: 59.1688
+prod: 1.34437 * 2^16862534
+Memory read rate: 297.322 GB/s
+64bit flops: 74.3305 /s
+Result matches expectation :-)
+
 
 */
