@@ -39,17 +39,15 @@ void run_prod_diff_realrealvec(OpenClContext& context, int32_t M, int32_t N, con
   cl::Program program = context.createProgram("vandermonde", files, common_options);
   cl::Kernel kernel_prod_diff_realrealvec = context.createKernel(program, "prod_diff_realrealvec");
 
-  std::vector<LargeProduct> prod_init(M, { 1.0, 0 });
-
   cl::Kernel kernel_prod_divide = context.createKernel(program, "prod_divide");
   kernel_prod_divide.setArg(0, bufferProd1);
   kernel_prod_divide.setArg(1, bufferProd2);
 
   auto queue = context.createQueue();
 
-  LargeProduct prod1 = {1.0, 0};
-  queue.enqueueWriteBuffer(bufferProd1, true, 0, sizeof(LargeProduct) * M, &prod1);
-  queue.enqueueWriteBuffer(bufferProd2, true, 0, sizeof(LargeProduct) * M, &prod1);
+  std::vector<LargeProduct> prod_init(M, { 1.0, 0 });
+  queue.enqueueWriteBuffer(bufferProd1, true, 0, sizeof(LargeProduct) * M, &prod_init);
+  queue.enqueueWriteBuffer(bufferProd2, true, 0, sizeof(LargeProduct) * M, &prod_init);
   queue.enqueueWriteBuffer(bufferX, true, 0, sizeof(double) * N * M, &x[0]);
 
   std::mt19937_64 gen(2023);
