@@ -9,6 +9,15 @@
 
 using std::size_t;
 
+void expect_prod(LargeProduct actual, LargeProduct expected) {
+    if ((actual.exponent == expected.exponent) && (abs(actual.prod - expected.prod) < 1e-5)) {
+      std::cout << "Result matches expectation :-)" << std::endl;
+    } else {
+      std::cerr << "Invalid result!" << std::endl;
+      exit(1);
+    }
+}
+
 void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>& x, std::mt19937_64& gen) {
   size_t N = x.size();
   const size_t workgroupSize = 256;
@@ -67,9 +76,8 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
     err = queue.enqueueNDRangeKernel(
             kernel_prod_divide, cl::NullRange, cl::NDRange((size_t)1), cl::NDRange((size_t)64), nullptr, nullptr);
 
-    queue.finish();
-
-    if (i % 256 == 0) {
+    if (i % 1024 == 0) {
+      queue.finish();
       queue.enqueueReadBuffer(bufferProd1, CL_TRUE, 0, sizeof(prod1), &prod1);
       queue.enqueueReadBuffer(bufferProd2, CL_TRUE, 0, sizeof(prod2), &prod2);
 
@@ -80,20 +88,23 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
   }
 
   queue.finish();
+  timer.stopAndAddTime();
 
   std::cout << "Total time: " << timer.getTimeElapsed() << std::endl;
 
   queue.enqueueReadBuffer(bufferProd1, CL_TRUE, 0, sizeof(prod1), &prod1);
   std::cout << "prod: " << prod1.prod << " * 2^" << prod1.exponent << std::endl;
 
-  if (N == 131072) {
-    if ( (prod1.exponent == -37696542) && (abs(prod1.prod - 1.88272) < 1e-5)) {
-      std::cout << "Result matches expectation :-)" << std::endl;
-    } else {
-      std::cerr << "Invalid result!" << std::endl;
-    }
-  }
+  double bytesRead = 1.0 * sizeof(double) * N * N;
+  double flops = 1.0 * sizeof(double) * N * N * 2.0; /* 2 ops per vector element */
+  std::cout << "Memory read rate: " << bytesRead / timer.getTimeElapsed() / 1e9 << " GB/s" << std::endl;
+  std::cout << "64bit flops: " << flops / timer.getTimeElapsed() / 1e9 << " /s" << std::endl;
 
+  if (N == 131072) {
+    expect_prod(prod1, {1.88272, -37696542});
+  } else if (N == 1048576) {
+    expect_prod(prod1, {-1.39209, -139635901});
+  }
 }
 
 // Creates vector with random values in (a,b)
@@ -107,6 +118,15 @@ std::vector<double> init_random_positions(const long int N, const double a, cons
 }
 
 int main(int argc, char** argv) {
+  if (argc!=3) {
+    std::cout << argv[0] << "M N\n";
+    std::cout << "M number of parallel runs, N number of particles\n";
+    std::cout << "example: " << argv[0] << " 10 10000\n";
+    return 1;
+  }
+  long int M = atoi(argv[1]);
+  long int N = atoi(argv[2]);
+
   OpenClConfig config;
   config.platform = 0;
   config.deviceId = 0;
@@ -114,8 +134,8 @@ int main(int argc, char** argv) {
   OpenClContext context(config);
 
   std::mt19937_64 gen(42);
-  std::vector x = init_random_positions(131072, -1, 1, gen);
-  std::vector y = init_random_positions(131072, -1, 1, gen);
+  std::vector x = init_random_positions(N, -1, 1, gen);
+  std::vector y = init_random_positions(N, -1, 1, gen);
 
   run_prod_diff_realrealvec(context, x, gen);
 }
