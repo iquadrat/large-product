@@ -31,9 +31,9 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
   cl::Program program = context.createProgram("vandermonde", files, common_options);
   cl::Kernel kernel_prod_diff_realrealvec = context.createKernel(program, "prod_diff_realrealvec");
 
-  cl::Kernel kernel_prod_normalize = context.createKernel(program, "prod_normalize");
-  kernel_prod_normalize.setArg(0, bufferProd1);
-  kernel_prod_normalize.setArg(1, bufferProd2);
+  cl::Kernel kernel_prod_divide = context.createKernel(program, "prod_divide");
+  kernel_prod_divide.setArg(0, bufferProd1);
+  kernel_prod_divide.setArg(1, bufferProd2);
 
   auto queue = context.createQueue();
 
@@ -59,27 +59,23 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
     kernel_prod_diff_realrealvec.setArg(5, bufferProd2);
 
     size_t workItems = (N + MULS_PER_EXPONENT_EXTRACTION - 1) / MULS_PER_EXPONENT_EXTRACTION;
-    std::cout << "work items: " << workItems << std::endl;
 
     cl_int err = queue.enqueueNDRangeKernel(
             kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(workItems), cl::NDRange(workgroupSize), nullptr, nullptr);
     context.checkErr(err, "kernel");
 
+    err = queue.enqueueNDRangeKernel(
+            kernel_prod_divide, cl::NullRange, cl::NDRange((size_t)1), cl::NDRange((size_t)64), nullptr, nullptr);
 
     queue.finish();
 
-    if (i % 1 == 0) {
+    if (i % 256 == 0) {
       queue.enqueueReadBuffer(bufferProd1, CL_TRUE, 0, sizeof(prod1), &prod1);
       queue.enqueueReadBuffer(bufferProd2, CL_TRUE, 0, sizeof(prod2), &prod2);
 
-      std::cout << "iteration " << i << ": " << timer.getTimeElapsed() << std::endl;
-      std::cout << u1 << "/" << u2 <<std::endl;
-      std::cout << "prod1: " << prod1.prod << " * 2^" << prod1.exponent << std::endl;
-      std::cout << "prod2: " << prod2.prod << " * 2^" << prod2.exponent << std::endl;
+      std::cout << "iteration " << i << " (" << timer.getTimeElapsed() << "s): ";
+      std::cout << prod1.prod << " * 2^" << prod1.exponent << std::endl;
     }
-
-    err = queue.enqueueNDRangeKernel(
-            kernel_prod_normalize, cl::NullRange, cl::NDRange((size_t)1), cl::NDRange((size_t)64), nullptr, nullptr);
 
   }
 
@@ -88,10 +84,16 @@ void run_prod_diff_realrealvec(OpenClContext& context, const std::vector<double>
   std::cout << "Total time: " << timer.getTimeElapsed() << std::endl;
 
   queue.enqueueReadBuffer(bufferProd1, CL_TRUE, 0, sizeof(prod1), &prod1);
-  queue.enqueueReadBuffer(bufferProd2, CL_TRUE, 0, sizeof(prod2), &prod2);
+  std::cout << "prod: " << prod1.prod << " * 2^" << prod1.exponent << std::endl;
 
-  std::cout << "prod1: " << prod1.prod << " * 2^" << prod1.exponent << std::endl;
-  std::cout << "prod2: " << prod2.prod << " * 2^" << prod2.exponent << std::endl;
+  if (N == 131072) {
+    if ( (prod1.exponent == -37696542) && (abs(prod1.prod - 1.88272) < 1e-5)) {
+      std::cout << "Result matches expectation :-)" << std::endl;
+    } else {
+      std::cerr << "Invalid result!" << std::endl;
+    }
+  }
+
 }
 
 // Creates vector with random values in (a,b)
@@ -104,27 +106,7 @@ std::vector<double> init_random_positions(const long int N, const double a, cons
   return result;
 }
 
-const uint64_t EXPONENT_MASK = 0x7ff0000000000000ULL;
-const uint64_t EXPONENT_RESET_MASK = 0x3ff0000000000000ULL;
-const int32_t EXPONENT_BIAS = 1023;
-
-typedef union {
-    uint64_t u64;
-    double f64;
-} double_cast;
-
-void normalize_exponent(double* prod, int32_t* exponent) {
-  double_cast* cast_prod = (double_cast*)prod;
-  *exponent = *exponent + (((*cast_prod).u64 & EXPONENT_MASK) >> 52) - EXPONENT_BIAS;
-  (*cast_prod).u64 = ((*cast_prod).u64 & ~EXPONENT_MASK) | EXPONENT_RESET_MASK;
-}
-
 int main(int argc, char** argv) {
-  double prod = 0.104612;
-  int32_t exponent = 0;
-  normalize_exponent(&prod, &exponent);
-  std::cout << prod << "* 2^" << exponent << std::endl;
-
   OpenClConfig config;
   config.platform = 0;
   config.deviceId = 0;
@@ -132,8 +114,8 @@ int main(int argc, char** argv) {
   OpenClContext context(config);
 
   std::mt19937_64 gen(42);
-  std::vector x = init_random_positions(100000, -1, 1, gen);
-  std::vector y = init_random_positions(100000, -1, 1, gen);
+  std::vector x = init_random_positions(131072, -1, 1, gen);
+  std::vector y = init_random_positions(131072, -1, 1, gen);
 
   run_prod_diff_realrealvec(context, x, gen);
 }

@@ -98,11 +98,18 @@ int main(int argc, char *argv[]) {
         double u=distu(gen)*2-1;
         double u0=distu(gen)*2-1;
         prod_diff_realrealvec(N, k, u, u0, x, prod, prod0);
-        cout << "iteration " << u << "/" << u0 << "/" << k << ": " << prod << endl;
+
+        prod.significand /= prod0.significand;
+        prod.exponent -= prod0.exponent;
+        prod0 = LargeExponentFloat(1.0);
+
+        if (k % 1024 == 0) {
+          cout << "iteration " << k << ": " << prod << endl;
+        }
       }
     }
     timing.stop();
-    cout << "prod_diff_realrealvec: prod=" << prod.significand/prod0.significand << " exponent=" << prod.exponent-prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+    cout << "prod_diff_realrealvec: prod=" << prod.significand << " exponent=" << prod.exponent << " timing=" << timing.get_time() << " seconds\n";
     timing.reset();
   }
 

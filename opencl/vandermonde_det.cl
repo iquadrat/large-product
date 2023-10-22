@@ -23,7 +23,6 @@ int32_t normalize_exponent(double* prod) {
   int32_t exponent = (((*cast_prod).u64 & EXPONENT_MASK) >> 52) - EXPONENT_BIAS;
   (*cast_prod).u64 = ((*cast_prod).u64 & ~EXPONENT_MASK) | EXPONENT_RESET_MASK;
   return exponent;
-//return 0;
 }
 
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
@@ -35,57 +34,25 @@ void atomic_mul(volatile __global double *source, const double mul) {
     } while(atom_cmpxchg((volatile __global uint64_t*)source, prev.u64, updated.u64) != prev.u64);
 }
 
-__kernel void prod_normalize(
+__kernel void prod_divide(
         __global struct LargeProduct *g_prod1,
         __global struct LargeProduct *g_prod2
 ) {
-  double prod1 = g_prod1->prod;
-  double prod2 = g_prod2->prod;
+  double prod = g_prod1->prod / g_prod2->prod;
+  int32_t exponent = g_prod1->exponent - g_prod2->exponent;
+  exponent += normalize_exponent(&prod);
 
-  int32_t exponent1 = normalize_exponent(&prod1);
-  int32_t exponent2 = normalize_exponent(&prod2);
+  g_prod1->prod = prod;
+  g_prod1->exponent = exponent;
 
-  g_prod1->prod = prod1;
-  g_prod1->exponent += exponent1;
-
-  g_prod2->prod = prod2;
-  g_prod2->exponent += exponent2;
+  g_prod2->prod = 1.0;
+  g_prod2->exponent = 0;
 }
 
-
-__kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
-void prod_diff_realrealvec(
-        const int32_t k,
-        const double u1,
-        const double u2,
-        __global const double *x,
-        __global struct LargeProduct *g_prod1,
-        __global struct LargeProduct *g_prod2
-) {
+void horizontal_reduce(__local int32_t* exponents, __local double* products, int32_t exponent, double product) {
   const uint32_t lid = get_local_id(0);
-
-  int32_t group_offset = get_group_id(0) * WORKGROUP_SIZE * MULS_PER_EXPONENT_EXTRACTION;
-
-  double prod1 = 1.0;
-  double prod2 = 1.0;
-
-  // TODO: Handle case where N is not a multiple of MULS_PER_EXPONENT_EXTRACTION
-  for(int i = 0; i < MULS_PER_EXPONENT_EXTRACTION; i++) {
-      int64_t offset = group_offset + i * WORKGROUP_SIZE + lid;
-//    int64_t offset = group_offset + lid * MULS_PER_EXPONENT_EXTRACTION + i;
-      if (offset != k) {
-          prod1 *= u1 - x[offset];
-          prod2 *= u2 - x[offset];
-      }
-  }
-
-  int32_t exponent1 = normalize_exponent(&prod1);
-  int32_t exponent2 = normalize_exponent(&prod2);
-
-  __local int32_t exponents[WORKGROUP_SIZE];
-  __local double products[WORKGROUP_SIZE];
-  exponents[lid] = exponent1;
-  products[lid] = prod1;
+  exponents[lid] = exponent;
+  products[lid] = product;
 
   barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -98,23 +65,60 @@ void prod_diff_realrealvec(
     }
     barrier(CLK_LOCAL_MEM_FENCE);
   }
-//  int32_t e = exponents[lid] + exponents[lid + 1];
-//  double p = products[lid] * products[lid + 1];
 
   // wavefront reduction
 //  for(; i>0; i /= 2) {
 //    if(lid < i)
 //      localBuffer[lid] = res = res + localBuffer[lid + i];
 //  }
+}
 
-  if (lid == 0 && get_group_id(0) == 0) {
+__kernel __attribute__((reqd_work_group_size(WORKGROUP_SIZE, 1, 1)))
+void prod_diff_realrealvec(
+        const int32_t k,
+        const double u1,
+        const double u2,
+        __global const double *x,
+        __global struct LargeProduct *g_prod1,
+        __global struct LargeProduct *g_prod2
+) {
+  const uint32_t lid = get_local_id(0);
+  int32_t group_offset = get_group_id(0) * WORKGROUP_SIZE * MULS_PER_EXPONENT_EXTRACTION;
+
+  double prod1 = 1.0;
+  double prod2 = 1.0;
+
+  // TODO: Handle case where N is not a multiple of MULS_PER_EXPONENT_EXTRACTION
+  for(int i = 0; i < MULS_PER_EXPONENT_EXTRACTION; i++) {
+      int32_t offset = group_offset + i * WORKGROUP_SIZE + lid;
+//    int32_t offset = group_offset + lid * MULS_PER_EXPONENT_EXTRACTION + i;
+      if (offset != k) {
+          prod1 *= u1 - x[offset];
+          prod2 *= u2 - x[offset];
+      }
+  }
+
+  int32_t exponent1 = normalize_exponent(&prod1);
+  int32_t exponent2 = normalize_exponent(&prod2);
+
+  __local int32_t exponents[WORKGROUP_SIZE];
+  __local double products[WORKGROUP_SIZE];
+
+  horizontal_reduce(exponents, products, exponent1, prod1);
+  if (lid == 0) {
+    exponent1 = exponents[0];
     prod1 = products[0];
-    exponent1 = exponents[0] + normalize_exponent(&prod1);
+  }
+  barrier(CLK_LOCAL_MEM_FENCE);
 
-//    g_prod1->prod = prod1;
-//    g_prod2->prod = prod2;
-//    g_prod1->exponent = exponent1;
-//    g_prod2->exponent = exponent2;
+  horizontal_reduce(exponents, products, exponent2, prod2);
+  if (lid == 0) {
+    exponent2 = exponents[0];
+    prod2 = products[0];
+
+    exponent1 += normalize_exponent(&prod1);
+    exponent2 += normalize_exponent(&prod2);
+
     atomic_mul(&g_prod1->prod, prod1);
     atomic_mul(&g_prod2->prod, prod2);
     atomic_add(&g_prod1->exponent, exponent1);
