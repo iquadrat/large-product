@@ -59,7 +59,7 @@ public:
 private:
     const size_t workgroupSize = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
-    const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 8;
+    const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
 
     OpenClContext& context;
 
@@ -168,6 +168,8 @@ private:
       kernel_prod_diff_realrealvec.setArg(3, bufferX);
       kernel_prod_diff_realrealvec.setArg(4, bufferProd1);
       kernel_prod_diff_realrealvec.setArg(5, bufferProd2);
+      int32_t kWorkGroup = k / ELEMENTS_PER_WORKITEM / workgroupSize;
+      kernel_prod_diff_realrealvec.setArg(6, kWorkGroup);
 
       size_t workItems = (N + ELEMENTS_PER_WORKITEM - 1) / ELEMENTS_PER_WORKITEM;
 
