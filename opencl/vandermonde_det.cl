@@ -119,13 +119,11 @@ void prod_diff_realrealvec(
     int32_t exponentX = 0;
     int32_t exponentY = 0;
 
-    if (r != offset) {
-      prodX *= x[r] - x[offset];
-      prodY *= x[r] - y[offset];
+    prodX *= x[r] - x[offset];
+    prodY *= x[r] - y[offset];
 
-      exponentX += normalize_exponent(&prodX);
-      exponentY += normalize_exponent(&prodY);
-    }
+    exponentX += normalize_exponent(&prodX);
+    exponentY += normalize_exponent(&prodY);
 
     horizontal_reduce(exponents, products, exponentX, prodX);
     if (lid == 0) {
