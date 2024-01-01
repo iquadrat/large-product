@@ -89,16 +89,16 @@ int main(int argc, char *argv[]) {
     timing.start();
     for (long int i=0; i<M; i++) {
 
-      for (long int k=0; k<N; k++) {
+      for (long int r=0; r < N; r++) {
         LargeExponentFloat prodX(1.0);
         LargeExponentFloat prodY(1.0);
 
-        prod_diff_realrealvec(N, k, x[k], y[k], x, prodX, prodY);
+        prod_diff_realrealvec(N, r, x[r], y[r], x, prodX, prodY);
 //        prodX.significand /= prodY.significand;
 //        prodX.exponent -= prodY.exponent;
 
-        if (k % (1 << 14) == 0) {
-          cout << "iteration " << k << ":\t";
+        if (r % (1 << 14) == 0) {
+          cout << "iteration " << r << ":\t";
           prodX.normalize_exponent();
           prodY.normalize_exponent();
           std::cout << prodX.significand << " * 2^" << prodX.exponent << "\t / ";

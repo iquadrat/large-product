@@ -100,10 +100,10 @@ void prod_diff_realrealvec(
         __global struct LargeProduct *g_prodX,
         __global struct LargeProduct *g_prodY
 ) {
-  if (get_group_id(0) == start_offset / BLOCK_SIZE) {
-    // This block is skipped and processed by separate kernel in the next iteration.
-    return;
-  }
+//  if (get_group_id(0) == start_offset / BLOCK_SIZE) {
+//    // This block is skipped and processed by separate kernel in the next iteration.
+//    return;
+//  }
 
   uint32_t r = get_global_id(0);
   const uint32_t lid = get_local_id(0);
@@ -119,11 +119,13 @@ void prod_diff_realrealvec(
     int32_t exponentX = 0;
     int32_t exponentY = 0;
 
-    prodX *= x[r] - x[offset];
-    prodY *= y[r] - x[offset];
+    if (r != offset) {
+      prodX *= x[r] - x[offset];
+      prodY *= x[r] - y[offset];
 
-    exponentX += normalize_exponent(&prodX);
-    exponentY += normalize_exponent(&prodY);
+      exponentX += normalize_exponent(&prodX);
+      exponentY += normalize_exponent(&prodY);
+    }
 
     horizontal_reduce(exponents, products, exponentX, prodX);
     if (lid == 0) {

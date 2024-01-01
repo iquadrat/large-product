@@ -30,6 +30,8 @@ public:
       this->blockCount = (N + BLOCK_SIZE - 1)  / BLOCK_SIZE;
       setup();
 
+      std::cout << "blockCount = " << blockCount << std::endl;
+
 //      copyInputBuffers(x, y);
 //      benchmark_iteration();
 
@@ -159,15 +161,15 @@ private:
       kernel_prod_diff_realrealvec.setArg(4, bufferProdY);
 
       cl_int err = queue.enqueueNDRangeKernel(
-              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(N), cl::NDRange(BLOCK_SIZE, 1), nullptr, nullptr);
+              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(N), cl::NDRange(BLOCK_SIZE), nullptr, nullptr);
       context.checkErr(err, "kernel");
     }
 
     void print_intermediate_result(int32_t i) {
       queue.finish();
       LargeProduct prodX, prodY;
-      queue.enqueueReadBuffer(bufferProdX, CL_TRUE, i, sizeof(LargeProduct), &prodX);
-      queue.enqueueReadBuffer(bufferProdY, CL_TRUE, i, sizeof(LargeProduct), &prodY);
+      queue.enqueueReadBuffer(bufferProdX, CL_TRUE, i * sizeof(LargeProduct), sizeof(LargeProduct), &prodX);
+      queue.enqueueReadBuffer(bufferProdY, CL_TRUE, i * sizeof(LargeProduct), sizeof(LargeProduct), &prodY);
 
       std::cout << "iteration " << i << " (" << timer.getTimeElapsed() << "s): ";
       std::cout << prodX.prod << " * 2^" << prodX.exponent << "\t / ";
@@ -192,7 +194,7 @@ private:
       }
 
       double bytesRead = 1.0 * sizeof(double) * N * N / BLOCK_SIZE;
-      double flops =(1.0 * N * (N - BLOCK_SIZE * BLOCK_SIZE)) * 2.0; /* 2 ops per vector element */
+      double flops =(1.0 * N * (N - BLOCK_SIZE * BLOCK_SIZE)) * 2 * 2; /* 2 ops per vector element */
       std::cout << "Memory read rate: " << bytesRead / timer.getTimeElapsed() / 1e9 << " GB/s" << std::endl;
       std::cout << "64bit flops: " << flops / timer.getTimeElapsed() / 1e9 << " Gflops/s" << std::endl;
 
