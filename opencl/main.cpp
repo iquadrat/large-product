@@ -94,6 +94,7 @@ private:
       options_stream << " -DWORKGROUP_SIZE=" << workgroupSize;
       options_stream << " -DVECTOR_SIZE=" << N;
       options_stream << " -cl-std=CL2.0 ";
+//      options_stream << " -cl-denorms-are-zero -cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros -cl-uniform-work-group-size";
       std::string common_options = options_stream.str();
 
       program = context.createProgram("vandermonde", files, common_options);

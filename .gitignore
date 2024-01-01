@@ -11,3 +11,4 @@ Makefile
 /build/
 .idea
 /cmake-build-debug/
+/opencl/build
