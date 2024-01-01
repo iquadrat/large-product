@@ -80,102 +80,105 @@ int main(int argc, char *argv[]) {
   double * y = new_double_array(N);
 
   std::mt19937_64 init_gen(42);
-  init_random_positions(init_gen, N,-1,1,x);
+  init_random_positions(init_gen, N,-1,1, x);
   init_random_positions(init_gen, N,-1,1,y);
 
   stopwatch timing;
 
   for(int rep = 0; rep < REPETITIONS; ++rep) {
-    std::mt19937_64 gen(2023);
-    std::uniform_real_distribution<double> distu(0.0, 1.0);
-
-    LargeExponentFloat prod(1.0);
-    LargeExponentFloat prod0(1.0);
-
     timing.start();
     for (long int i=0; i<M; i++) {
+
       for (long int k=0; k<N; k++) {
-        double u=distu(gen)*2-1;
-        double u0=distu(gen)*2-1;
-        prod_diff_realrealvec(N, k, u, u0, x, prod, prod0);
+        LargeExponentFloat prodX(1.0);
+        LargeExponentFloat prodY(1.0);
 
-        prod.significand /= prod0.significand;
-        prod.exponent -= prod0.exponent;
-        prod0 = LargeExponentFloat(1.0);
+        prod_diff_realrealvec(N, k, x[k], y[k], x, prodX, prodY);
+//        prodX.significand /= prodY.significand;
+//        prodX.exponent -= prodY.exponent;
 
-        if (k % 1024 == 0) {
-          cout << "iteration " << k << ": " << prod << endl;
+        if (k % (1 << 14) == 0) {
+          cout << "iteration " << k << ":\t";
+          prodX.normalize_exponent();
+          prodY.normalize_exponent();
+          std::cout << prodX.significand << " * 2^" << prodX.exponent << "\t / ";
+          std::cout << prodY.significand << " * 2^" << prodY.exponent << std::endl;
         }
       }
+
     }
     timing.stop();
-    cout << "prod_diff_realrealvec: prod=" << prod.significand << " exponent=" << prod.exponent << " timing=" << timing.get_time() << " seconds\n";
+
+    cout <<
+    // "prod_diff_realrealvec: prod=" << prod.significand << " exponent=" << prod.exponent <<
+        " timing=" << timing.get_time() << " seconds\n";
+
     timing.reset();
   }
 
-  for(int rep = 0; rep < REPETITIONS; ++rep) {
-    std::mt19937_64 gen(2023);
-    std::uniform_real_distribution<double> distu(0.0, 1.0);
-
-    LargeExponentFloat prod(1.0);
-    LargeExponentFloat prod0(1.0);
-
-    timing.start();
-    for (long int i = 0; i < M; i++)
-      for (long int k = 0; k < N; k++) {
-        double u = distu(gen) * 2 - 1;
-        double v = distu(gen) * 2 - 1;
-        double u0 = distu(gen) * 2 - 1;
-        double v0 = distu(gen) * 2 - 1;
-        prod_dist2_complexcomplexvec(N, k, u, u0, v, v0, x, y, prod, prod0);
-      }
-    timing.stop();
-    cout << "prod_dist2_complexcomplexvec: prod=" << prod.significand / prod0.significand << " exponent="
-         << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
-    timing.reset();
-  }
-
-  for(int rep = 0; rep < REPETITIONS; ++rep) {
-    std::mt19937_64 gen(2023);
-    std::uniform_real_distribution<double> distu(0.0, 1.0);
-
-    LargeExponentFloat prod(1.0);
-    LargeExponentFloat prod0(1.0);
-
-    timing.start();
-    for (long int i = 0; i < M; i++)
-      for (long int k = 0; k < N; k++) {
-        double u = distu(gen) * 2 - 1;
-        double u0 = distu(gen) * 2 - 1;
-        prod_dist2_realcomplexvec(N, u, u0, x, y, prod, prod0);
-      }
-    timing.stop();
-    cout << "prod_dist2_realcomplexvec: prod=" << prod.significand / prod0.significand << " exponent="
-         << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
-    timing.reset();
-  }
-
-  for(int rep = 0; rep < REPETITIONS; ++rep) {
-    std::mt19937_64 gen(2023);
-    std::uniform_real_distribution<double> distu(0.0, 1.0);
-
-    LargeExponentFloat prod(1.0);
-    LargeExponentFloat prod0(1.0);
-
-    timing.start();
-    for (long int i = 0; i < M; i++)
-      for (long int k = 0; k < N; k++) {
-        double u = distu(gen) * 2 - 1;
-        double v = distu(gen) * 2 - 1;
-        double u0 = distu(gen) * 2 - 1;
-        double v0 = distu(gen) * 2 - 1;
-        prod_dist2_complexrealvec(N, u, v, u0, v0, x, prod, prod0);
-      }
-    timing.stop();
-    cout << "prod_dist2_complexrealvec: prod=" << prod.significand / prod0.significand << " exponent="
-         << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
-    timing.reset();
-  }
+//  for(int rep = 0; rep < REPETITIONS; ++rep) {
+//    std::mt19937_64 gen(2023);
+//    std::uniform_real_distribution<double> distu(0.0, 1.0);
+//
+//    LargeExponentFloat prod(1.0);
+//    LargeExponentFloat prod0(1.0);
+//
+//    timing.start();
+//    for (long int i = 0; i < M; i++)
+//      for (long int k = 0; k < N; k++) {
+//        double u = distu(gen) * 2 - 1;
+//        double v = distu(gen) * 2 - 1;
+//        double u0 = distu(gen) * 2 - 1;
+//        double v0 = distu(gen) * 2 - 1;
+//        prod_dist2_complexcomplexvec(N, k, u, u0, v, v0, x, y, prod, prod0);
+//      }
+//    timing.stop();
+//    cout << "prod_dist2_complexcomplexvec: prod=" << prod.significand / prod0.significand << " exponent="
+//         << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+//    timing.reset();
+//  }
+//
+//  for(int rep = 0; rep < REPETITIONS; ++rep) {
+//    std::mt19937_64 gen(2023);
+//    std::uniform_real_distribution<double> distu(0.0, 1.0);
+//
+//    LargeExponentFloat prod(1.0);
+//    LargeExponentFloat prod0(1.0);
+//
+//    timing.start();
+//    for (long int i = 0; i < M; i++)
+//      for (long int k = 0; k < N; k++) {
+//        double u = distu(gen) * 2 - 1;
+//        double u0 = distu(gen) * 2 - 1;
+//        prod_dist2_realcomplexvec(N, u, u0, x, y, prod, prod0);
+//      }
+//    timing.stop();
+//    cout << "prod_dist2_realcomplexvec: prod=" << prod.significand / prod0.significand << " exponent="
+//         << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+//    timing.reset();
+//  }
+//
+//  for(int rep = 0; rep < REPETITIONS; ++rep) {
+//    std::mt19937_64 gen(2023);
+//    std::uniform_real_distribution<double> distu(0.0, 1.0);
+//
+//    LargeExponentFloat prod(1.0);
+//    LargeExponentFloat prod0(1.0);
+//
+//    timing.start();
+//    for (long int i = 0; i < M; i++)
+//      for (long int k = 0; k < N; k++) {
+//        double u = distu(gen) * 2 - 1;
+//        double v = distu(gen) * 2 - 1;
+//        double u0 = distu(gen) * 2 - 1;
+//        double v0 = distu(gen) * 2 - 1;
+//        prod_dist2_complexrealvec(N, u, v, u0, v0, x, prod, prod0);
+//      }
+//    timing.stop();
+//    cout << "prod_dist2_complexrealvec: prod=" << prod.significand / prod0.significand << " exponent="
+//         << prod.exponent - prod0.exponent << " timing=" << timing.get_time() << " seconds\n";
+//    timing.reset();
+//  }
 
   delete[] x;
   delete[] y;

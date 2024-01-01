@@ -67,25 +67,21 @@ int32_t atomic_mul_normalize(volatile __global double *source, const double mul)
 void horizontal_reduce(__local int32_t* exponents, __local double* products, int32_t exponent, double product) {
   const uint32_t lid = get_local_id(0);
 
-#if WORKGROUP_SIZE > 128
   // local memory reduction
-  if (lid >= 128) {
-    exponents[lid - 128] = exponent;
-    products[lid - 128] = product;
+  if (lid >= WORKGROUP_SIZE/2) {
+    exponents[lid - WORKGROUP_SIZE/2] = exponent;
+    products[lid - WORKGROUP_SIZE/2] = product;
   }
   barrier(CLK_LOCAL_MEM_FENCE);
-#endif
 
-#if WORKGROUP_SIZE > 64
-  if(lid < 128) {
+  if (lid < WORKGROUP_SIZE/2) {
     exponents[lid] = exponent + exponents[lid];
     products[lid]  = product * products[lid];
   }
   barrier(CLK_LOCAL_MEM_FENCE);
-#endif
 
   // wavefront reduction
-  int i = 64;
+  int i = WORKGROUP_SIZE / 4;
   for(; i > 0; i /= 2) {
     if (lid < i) {
       exponents[lid] += exponents[lid + i];

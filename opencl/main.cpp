@@ -30,8 +30,8 @@ public:
       this->blockCount = (N + BLOCK_SIZE - 1)  / BLOCK_SIZE;
       setup();
 
-      copyInputBuffers(x, y);
-      benchmark_iteration();
+//      copyInputBuffers(x, y);
+//      benchmark_iteration();
 
       copyInputBuffers(x, y);
       timer.restart();
@@ -74,6 +74,7 @@ private:
     Timer timer;
 
     void setup() {
+      std::cout << "sizeof(LargeProduct) = " << sizeof(LargeProduct) << std::endl;
       bufferX = context.createBuffer("x", sizeof(double) * blockCount * BLOCK_SIZE, CL_MEM_READ_WRITE);
       bufferY = context.createBuffer("y", sizeof(double) * blockCount * BLOCK_SIZE, CL_MEM_READ_ONLY);
       bufferProdX = context.createBuffer("prodX", sizeof(LargeProduct) * blockCount * BLOCK_SIZE, CL_MEM_READ_WRITE);

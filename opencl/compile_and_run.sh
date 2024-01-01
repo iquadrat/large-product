@@ -1,7 +1,8 @@
 #!/bin/bash
+set -e
 
 #export RUSTICL_ENABLE=radeonsi
-export ROC_ENABLE_PRE_VEGA=1
+#export ROC_ENABLE_PRE_VEGA=1
 
 cd build
 cmake ..

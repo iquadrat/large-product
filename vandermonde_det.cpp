@@ -34,7 +34,7 @@ void prod_diff_realrealvec(
   int64_t skipj = k & (-ELEMENTS_PER_LOOP);
   int64_t lastj = N & (-ELEMENTS_PER_LOOP);
 
-  // prod of u-x[j] for all j!=k
+  // prod of u-x[j] for all j != k
   for (int64_t j=0; j<lastj; j += ELEMENTS_PER_LOOP) [[likely]] {
     if (j != skipj) [[likely]] {
       const __m256d x0 = _mm256_load_pd(&x[j +  0]);
