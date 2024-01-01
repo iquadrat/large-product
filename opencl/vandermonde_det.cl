@@ -94,52 +94,58 @@ void horizontal_reduce(__local int32_t* exponents, __local double* products, int
 __kernel
 //__attribute__((reqd_work_group_size(256, 1, 1)))
 void prod_diff_realrealvec(
-        const int32_t offset,
+        const int32_t start_offset,
         __global const double *x,
         __global const double *y,
         __global struct LargeProduct *g_prodX,
         __global struct LargeProduct *g_prodY
 ) {
-  if (get_group_id(0) == offset / BLOCK_SIZE) {
+  if (get_group_id(0) == start_offset / BLOCK_SIZE) {
     // This block is skipped and processed by separate kernel in the next iteration.
     return;
   }
 
-  const uint32_t r = get_global_id(0);
+  uint32_t r = get_global_id(0);
   const uint32_t lid = get_local_id(0);
-
-  double prodX = 1.0;
-  double prodY = 1.0;
-  int32_t exponentX = 0;
-  int32_t exponentY = 0;
-
-  prodX *= x[r] - x[offset];
-  prodY *= y[r] - x[offset];
-
-  exponentX += normalize_exponent(&prodX);
-  exponentY += normalize_exponent(&prodY);
 
   __local int32_t exponents[WORKGROUP_SIZE / 2];
   __local double products[WORKGROUP_SIZE / 2];
 
-  horizontal_reduce(exponents, products, exponentX, prodX);
-  if (lid == 0) {
-    exponentX = exponents[0];
-    prodX = products[0];
-  }
-  barrier(CLK_LOCAL_MEM_FENCE);
+  for(int i = 0; i < BLOCK_SIZE; ++i) {
+    int32_t offset = start_offset + i;
 
-  horizontal_reduce(exponents, products, exponentY, prodY);
-  if (lid == 0) {
-    exponentY = exponents[0];
-    prodY = products[0];
+    double prodX = 1.0;
+    double prodY = 1.0;
+    int32_t exponentX = 0;
+    int32_t exponentY = 0;
+
+    prodX *= x[r] - x[offset];
+    prodY *= y[r] - x[offset];
 
     exponentX += normalize_exponent(&prodX);
     exponentY += normalize_exponent(&prodY);
 
-    atomic_mul(&g_prodX[offset].prod, prodX);
-    atomic_mul(&g_prodY[offset].prod, prodY);
-    atomic_add(&g_prodX[offset].exponent, exponentX);
-    atomic_add(&g_prodY[offset].exponent, exponentY);
+    horizontal_reduce(exponents, products, exponentX, prodX);
+    if (lid == 0) {
+      exponentX = exponents[0];
+      prodX = products[0];
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    horizontal_reduce(exponents, products, exponentY, prodY);
+    if (lid == 0) {
+      exponentY = exponents[0];
+      prodY = products[0];
+
+      exponentX += normalize_exponent(&prodX);
+      exponentY += normalize_exponent(&prodY);
+
+      atomic_mul(&g_prodX[offset].prod, prodX);
+      atomic_mul(&g_prodY[offset].prod, prodY);
+      atomic_add(&g_prodX[offset].exponent, exponentX);
+      atomic_add(&g_prodY[offset].exponent, exponentY);
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
   }
 }

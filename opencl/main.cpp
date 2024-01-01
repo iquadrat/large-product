@@ -169,7 +169,7 @@ private:
       queue.enqueueReadBuffer(bufferProdY, CL_TRUE, i, sizeof(LargeProduct), &prodY);
 
       std::cout << "iteration " << i << " (" << timer.getTimeElapsed() << "s): ";
-      std::cout << prodX.prod << " * 2^" << prodX.exponent << std::endl;
+      std::cout << prodX.prod << " * 2^" << prodX.exponent << "\t / ";
       std::cout << prodY.prod << " * 2^" << prodY.exponent << std::endl;
     }
 
@@ -191,9 +191,9 @@ private:
       }
 
       double bytesRead = 1.0 * sizeof(double) * N * N / BLOCK_SIZE;
-      double flops = 1.0 * (N * (N - BLOCK_SIZE * BLOCK_SIZE)) * 2.0; /* 2 ops per vector element */
+      double flops =(1.0 * N * (N - BLOCK_SIZE * BLOCK_SIZE)) * 2.0; /* 2 ops per vector element */
       std::cout << "Memory read rate: " << bytesRead / timer.getTimeElapsed() / 1e9 << " GB/s" << std::endl;
-      std::cout << "64bit flops: " << flops / timer.getTimeElapsed() / 1e9 << " /s" << std::endl;
+      std::cout << "64bit flops: " << flops / timer.getTimeElapsed() / 1e9 << " Gflops/s" << std::endl;
 
 //      if (N == 131072) {
 //        expect_prod(prod, {1.34437, 16862534 });
