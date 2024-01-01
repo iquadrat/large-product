@@ -52,12 +52,16 @@ __kernel void prod_divide(
 }
 
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
-void atomic_mul(volatile __global double *source, const double mul) {
+int32_t atomic_mul_normalize(volatile __global double *source, const double mul) {
   double_cast prev, updated;
+  int32_t exponent;
   do {
     prev.f64 = *source;
-    updated.f64 = prev.f64 * mul;
+    double tmp = prev.f64 * mul;
+    exponent = normalize_exponent(&tmp);
+    updated.f64 = tmp;
   } while(atom_cmpxchg((volatile __global uint64_t*)source, prev.u64, updated.u64) != prev.u64);
+  return exponent;
 }
 
 void horizontal_reduce(__local int32_t* exponents, __local double* products, int32_t exponent, double product) {
@@ -137,13 +141,16 @@ void prod_diff_realrealvec(
       exponentY = exponents[0];
       prodY = products[0];
 
-      exponentX += normalize_exponent(&prodX);
-      exponentY += normalize_exponent(&prodY);
+//      exponentX += normalize_exponent(&prodX);
+//      exponentY += normalize_exponent(&prodY);
 
-      atomic_mul(&g_prodX[offset].prod, prodX);
-      atomic_mul(&g_prodY[offset].prod, prodY);
+      exponentX += atomic_mul_normalize(&g_prodX[offset].prod, prodX);
+      exponentY += atomic_mul_normalize(&g_prodY[offset].prod, prodY);
       atomic_add(&g_prodX[offset].exponent, exponentX);
       atomic_add(&g_prodY[offset].exponent, exponentY);
+//      if (exponentY == 19 || prodY == 0.99|| exponentX == 19 || prodX == 0.99) {
+//        atomic_add(&g_prodX[offset].exponent, 1);
+//      }
     }
 
     barrier(CLK_LOCAL_MEM_FENCE);

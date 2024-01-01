@@ -38,7 +38,7 @@ public:
       for(int32_t b = 0; b < blockCount; b++) {
         schedule_compute_products(b);
 
-        if (b % 1024 == 0) {
+        if ((b * BLOCK_SIZE) % 2048 == 0) {
           print_intermediate_result(b * BLOCK_SIZE);
         }
       }
@@ -50,7 +50,7 @@ public:
     }
 
 private:
-    const int32_t BLOCK_SIZE = 64;
+    const int32_t BLOCK_SIZE = 256;
 //    const size_t workgroupSize = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
     //const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
@@ -187,7 +187,7 @@ private:
           continue;
         }
         std::cout << i << ":\t" << prodX[i].prod << " * 2^" << prodX[i].exponent;
-        std::cout << "\t" << prodY[i].prod << " * 2^" << prodY[i].exponent << std::endl;
+        std::cout << "\t / " << prodY[i].prod << " * 2^" << prodY[i].exponent << std::endl;
       }
 
       double bytesRead = 1.0 * sizeof(double) * N * N / BLOCK_SIZE;
