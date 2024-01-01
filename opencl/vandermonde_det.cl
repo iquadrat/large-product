@@ -63,23 +63,27 @@ void atomic_mul(volatile __global double *source, const double mul) {
 void horizontal_reduce(__local int32_t* exponents, __local double* products, int32_t exponent, double product) {
   const uint32_t lid = get_local_id(0);
 
+#if WORKGROUP_SIZE > 128
   // local memory reduction
   if (lid >= 128) {
     exponents[lid - 128] = exponent;
     products[lid - 128] = product;
   }
   barrier(CLK_LOCAL_MEM_FENCE);
+#endif
 
+#if WORKGROUP_SIZE > 64
   if(lid < 128) {
     exponents[lid] = exponent + exponents[lid];
     products[lid]  = product * products[lid];
   }
   barrier(CLK_LOCAL_MEM_FENCE);
+#endif
 
   // wavefront reduction
   int i = 64;
-  for(; i>0; i /= 2) {
-    if(lid < i) {
+  for(; i > 0; i /= 2) {
+    if (lid < i) {
       exponents[lid] += exponents[lid + i];
       products[lid]  *= products[lid + i];
     }
@@ -87,75 +91,55 @@ void horizontal_reduce(__local int32_t* exponents, __local double* products, int
 }
 
 
-__kernel __attribute__((reqd_work_group_size(256, 1, 1)))
+__kernel
+//__attribute__((reqd_work_group_size(256, 1, 1)))
 void prod_diff_realrealvec(
-        const int32_t k,
-        const double u1,
-        const double u2,
+        const int32_t offset,
         __global const double *x,
-        __global struct LargeProduct *g_prod1,
-        __global struct LargeProduct *g_prod2,
-        int32_t kWorkGroup
+        __global const double *y,
+        __global struct LargeProduct *g_prodX,
+        __global struct LargeProduct *g_prodY
 ) {
-  int32_t m = get_global_id(1);
-  const uint32_t lid = get_local_id(0);
-
-  int32_t offset = VECTOR_SIZE * m + get_group_id(0) * WORKGROUP_SIZE * ELEMENTS_PER_WORKITEM + lid;
-
-  double prod1 = 1.0;
-  double prod2 = 1.0;
-  int32_t exponent1 = 0;
-  int32_t exponent2 = 0;
-
-  // TODO: Handle case where N is not a multiple of MULS_PER_EXPONENT_EXTRACTION
-  if (get_group_id(0) != kWorkGroup) {
-    for (int i = 0; i < ELEMENTS_PER_WORKITEM; ++i) {
-      prod1 *= u1 - x[offset];
-      prod2 *= u2 - x[offset];
-      offset += WORKGROUP_SIZE;
-
-      if (i % MULS_PER_EXPONENT_EXTRACTION == MULS_PER_EXPONENT_EXTRACTION - 1) {
-        exponent1 += normalize_exponent(&prod1);
-        exponent2 += normalize_exponent(&prod2);
-      }
-    }
-  } else {
-    for (int i = 0; i < ELEMENTS_PER_WORKITEM; ++i) {
-      if (offset != k) {
-        prod1 *= u1 - x[offset];
-        prod2 *= u2 - x[offset];
-      }
-      offset += WORKGROUP_SIZE;
-
-      if (i % MULS_PER_EXPONENT_EXTRACTION == MULS_PER_EXPONENT_EXTRACTION - 1) {
-        exponent1 += normalize_exponent(&prod1);
-        exponent2 += normalize_exponent(&prod2);
-      }
-    }
+  if (get_group_id(0) == offset / BLOCK_SIZE) {
+    // This block is skipped and processed by separate kernel in the next iteration.
+    return;
   }
 
+  const uint32_t r = get_global_id(0);
+  const uint32_t lid = get_local_id(0);
+
+  double prodX = 1.0;
+  double prodY = 1.0;
+  int32_t exponentX = 0;
+  int32_t exponentY = 0;
+
+  prodX *= x[r] - x[offset];
+  prodY *= y[r] - x[offset];
+
+  exponentX += normalize_exponent(&prodX);
+  exponentY += normalize_exponent(&prodY);
 
   __local int32_t exponents[WORKGROUP_SIZE / 2];
   __local double products[WORKGROUP_SIZE / 2];
 
-  horizontal_reduce(exponents, products, exponent1, prod1);
+  horizontal_reduce(exponents, products, exponentX, prodX);
   if (lid == 0) {
-    exponent1 = exponents[0];
-    prod1 = products[0];
+    exponentX = exponents[0];
+    prodX = products[0];
   }
   barrier(CLK_LOCAL_MEM_FENCE);
 
-  horizontal_reduce(exponents, products, exponent2, prod2);
+  horizontal_reduce(exponents, products, exponentY, prodY);
   if (lid == 0) {
-    exponent2 = exponents[0];
-    prod2 = products[0];
+    exponentY = exponents[0];
+    prodY = products[0];
 
-    exponent1 += normalize_exponent(&prod1);
-    exponent2 += normalize_exponent(&prod2);
+    exponentX += normalize_exponent(&prodX);
+    exponentY += normalize_exponent(&prodY);
 
-    atomic_mul(&g_prod1[m].prod, prod1);
-    atomic_mul(&g_prod2[m].prod, prod2);
-    atomic_add(&g_prod1[m].exponent, exponent1);
-    atomic_add(&g_prod2[m].exponent, exponent2);
+    atomic_mul(&g_prodX[offset].prod, prodX);
+    atomic_mul(&g_prodY[offset].prod, prodY);
+    atomic_add(&g_prodX[offset].exponent, exponentX);
+    atomic_add(&g_prodY[offset].exponent, exponentY);
   }
 }

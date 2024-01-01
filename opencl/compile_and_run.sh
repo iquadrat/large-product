@@ -4,6 +4,7 @@
 export ROC_ENABLE_PRE_VEGA=1
 
 cd build
-make .
+cmake ..
+make
 cd ..
 ./build/main "$@"

@@ -95,7 +95,7 @@ cl::Program OpenClContext::createProgram(const string& name, const vector<string
     return createProgramFromBinary(name);
   }
 
-  std::cout << "GENERATING KERNEL" << std::endl;
+  std::cout << "Generating kernel for " << name << std::endl;
 
 	cl::Program::Sources sources;
 
@@ -109,7 +109,7 @@ cl::Program OpenClContext::createProgram(const string& name, const vector<string
 	}
 	sources.push_back(prog);
 
-	vector<cl::Device> devices = {device_};
+	vector<cl::Device> devices = { device_ };
 
 	cl::Program program(context_, sources);
 	cl_int err = program.build(devices, options.c_str());
@@ -118,6 +118,8 @@ cl::Program OpenClContext::createProgram(const string& name, const vector<string
 		std::cerr << "Build Log:\n" << program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device_) << std::endl;
 	}
 	checkErr(err, "Program::build()");
+
+  std::cout << "Successfully generated kernel for " << name << std::endl;
 
   if (false) {
     const vector<size_t> binSizes = program.getInfo<CL_PROGRAM_BINARY_SIZES>();

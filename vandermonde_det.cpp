@@ -13,7 +13,7 @@ __m256d sqr(__m256d v) {
 constexpr const int64_t MULS_PER_EXPONENT_EXTRACTION = 16;
 
 void prod_diff_realrealvec(
-         long int N,
+        long int N,
         const long int k,
         const double u1,
         const double u2,
