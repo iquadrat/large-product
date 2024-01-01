@@ -38,7 +38,7 @@ public:
       for(int32_t b = 0; b < blockCount; b++) {
         schedule_compute_products(b);
 
-        if ((b * BLOCK_SIZE) % 2048 == 0) {
+        if ((b * BLOCK_SIZE) % (1 << 14) == 0) {
           print_intermediate_result(b * BLOCK_SIZE);
         }
       }
@@ -50,7 +50,7 @@ public:
     }
 
 private:
-    const int32_t BLOCK_SIZE = 256;
+    const int32_t BLOCK_SIZE = 64;
 //    const size_t workgroupSize = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
     //const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
