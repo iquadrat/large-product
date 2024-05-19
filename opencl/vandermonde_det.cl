@@ -74,27 +74,19 @@ int32_t atomic_mul_normalize(volatile __global double *source, const double mul)
 
 #define SPECIAL_GROUPS 1
 
-__kernel
-__attribute__((reqd_work_group_size(BLOCK_V, 1, 1)))
-void prod_diff_realrealvec(
-        const int32_t v_start,
-        __global const double *x,
-        __global const double *y,
-        __global struct LargeProduct *g_prodX,
-        __global struct LargeProduct *g_prodY
+
+void finish_block_processing(
+    const int32_t v_start,
+    __global const double *x,
+    __global const double *y,
+    __global struct LargeProduct *g_prodX,
+    __global struct LargeProduct *g_prodY
 ) {
-  const uint32_t lid = get_local_id(0);
-  const int32_t gid = get_group_id(0) - SPECIAL_GROUPS;
+    const uint32_t lid = get_local_id(0);
 
-  if (gid < 0) {
-    if (v_start == 0) {
-      return;
-    }
 
-    // Process elements of previously skipped block.
-    const uint32_t v_start_previous = v_start - BLOCK_V;
 
-    for(int v = v_start_previous; v < v_start; v++) {
+    for(int v = v_start; v < v_start + BLOCK_V; v++) {
       double prodX = 1.0;
       double prodY = 1.0;
       int32_t exponentX = 0;
@@ -105,9 +97,9 @@ void prod_diff_realrealvec(
 
       if (lid == 0) {
         for(int i = 0; i < BLOCK_V; ++i) {
-          if (v_start_previous + i != v) {
-            prodX *= x[v_start_previous + i] - x_v;
-            prodY *= x[v_start_previous + i] - y_v;
+          if (v_start + i != v) {
+            prodX *= x[v_start + i] - x_v;
+            prodY *= x[v_start + i] - y_v;
           }
 
           if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
@@ -123,6 +115,29 @@ void prod_diff_realrealvec(
       }
 
     }
+}
+
+__kernel
+__attribute__((reqd_work_group_size(BLOCK_V, 1, 1)))
+void prod_diff_realrealvec(
+        const int32_t v_start,
+        __global const double *x,
+        __global const double *y,
+        __global struct LargeProduct *g_prodX,
+        __global struct LargeProduct *g_prodY
+) {
+  const uint32_t lid = get_local_id(0);
+  const int32_t gid = get_group_id(0) - SPECIAL_GROUPS;
+
+  if (gid < 0) {
+    // Process elements of previously skipped block.
+    const int32_t v_start_previous = v_start - BLOCK_V;
+
+    if (v_start_previous < 0) {
+      return;
+    }
+    finish_block_processing(v_start_previous,x,y,g_prodX,g_prodY);
+
     return;
   }
 
