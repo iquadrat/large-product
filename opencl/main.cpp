@@ -54,7 +54,7 @@ public:
 
 private:
     const int32_t BLOCK_H = 4096;
-    const int32_t BLOCK_V = 256;
+    const int32_t BLOCK_V = 64;
 //    const size_t workgroupSize = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
     //const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
@@ -191,14 +191,14 @@ private:
           expect_prod(prodY, { -1.23407 , -1335825});
         }
       }
-      if (i == 16384) {
+      if (i == 65536) {
         if (BLOCK_V == 64) {
-          expect_prod(prodX,  {1.17407, -1180929 });
-          expect_prod(prodY,  {-1.05701, -1369915 });
+          expect_prod(prodX,  {-1.15912, -1220984  });
+          expect_prod(prodY,  {-1.91744, -1424810 });
         }
         if (BLOCK_V == 256) {
-          expect_prod(prodX, {  -1.21037, -1180713 });
-          expect_prod(prodY, {  1.41641, -1369695 });
+          expect_prod(prodX, {  1.88024, -1220782 });
+          expect_prod(prodY, {  -1.58026, -1424560 });
         }
       }
 
