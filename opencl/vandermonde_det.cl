@@ -86,7 +86,6 @@ void prod_diff_realrealvec(
   const uint32_t lid = get_local_id(0);
 
   __local double x_r[BLOCK_V];
-  __local double y_r[BLOCK_V];
 
   double prodX = 1.0;
   double prodY = 1.0;
@@ -107,7 +106,6 @@ void prod_diff_realrealvec(
     }
 
     x_r[lid] = x[h_start + lid];
-    y_r[lid] = y[h_start + lid];
     barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int i = 0; i < BLOCK_V; ++i) {

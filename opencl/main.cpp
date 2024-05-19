@@ -54,7 +54,7 @@ public:
 
 private:
     const int32_t BLOCK_H = 4096;
-    const int32_t BLOCK_V = 128;
+    const int32_t BLOCK_V = 256;
 //    const size_t workgroupSize = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
     //const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
