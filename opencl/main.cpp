@@ -30,7 +30,7 @@ public:
       this->blockHCount = (N + BLOCK_H - 1)  / BLOCK_H;
       setup();
 
-      std::cout << "blockCount = " << blockHCount << std::endl;
+      std::cout << "blockHCount = " << blockHCount << std::endl;
       const uint32_t blockVCount = (N + BLOCK_V - 1) / BLOCK_V;
 
 //      copyInputBuffers(x, y);
@@ -41,7 +41,7 @@ public:
       for(int32_t b = 0; b < blockVCount; b++) {
         schedule_compute_products(b);
 
-        if ((b * BLOCK_V) % (1 << 14) == 0) {
+        if ((b * BLOCK_V) % (1 << 16) == 0) {
           print_intermediate_result(b * BLOCK_V);
         }
       }
@@ -53,8 +53,8 @@ public:
     }
 
 private:
-    const int32_t BLOCK_H = 256;
-    const int32_t BLOCK_V = 256;
+    const int32_t BLOCK_H = 4096;
+    const int32_t BLOCK_V = 128;
 //    const size_t workgroupSize = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
     //const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
@@ -163,7 +163,7 @@ private:
       kernel_prod_diff_realrealvec.setArg(4, bufferProdY);
 
       cl_int err = queue.enqueueNDRangeKernel(
-              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(N * (BLOCK_H / BLOCK_V)), cl::NDRange(BLOCK_V), nullptr, nullptr);
+              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(N / (BLOCK_H / BLOCK_V)), cl::NDRange(BLOCK_V), nullptr, nullptr);
       context.checkErr(err, "kernel");
     }
 

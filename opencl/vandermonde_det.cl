@@ -7,6 +7,7 @@ typedef int    int32_t;
 typedef ulong  uint64_t;
 typedef long   int64_t;
 
+#define ATOMIC_GLOBAL_UPDATE
 
 const uint64_t EXPONENT_MASK = 0x7ff0000000000000ULL;
 const uint64_t EXPONENT_RESET_MASK = 0x3ff0000000000000ULL;
@@ -53,6 +54,7 @@ __kernel void prod_divide(
 
 #pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
 int32_t atomic_mul_normalize(volatile __global double *source, const double mul) {
+#ifdef ATOMIC_GLOBAL_UPDATE
   double_cast prev, updated;
   int32_t exponent;
   do {
@@ -62,6 +64,12 @@ int32_t atomic_mul_normalize(volatile __global double *source, const double mul)
     updated.f64 = tmp;
   } while(atom_cmpxchg((volatile __global uint64_t*)source, prev.u64, updated.u64) != prev.u64);
   return exponent;
+#else
+  double tmp = *source * mul;
+  int32_t exponent = normalize_exponent(&tmp);
+  *source = tmp;
+  return exponent;
+#endif
 }
 
 
@@ -80,7 +88,7 @@ void prod_diff_realrealvec(
   __local double x_r[BLOCK_V];
   __local double y_r[BLOCK_V];
 
-  double prodX = 1.0; // TODO: directly assign to x[offset]
+  double prodX = 1.0;
   double prodY = 1.0;
   int32_t exponentX = 0;
   int32_t exponentY = 0;
@@ -93,9 +101,9 @@ void prod_diff_realrealvec(
 
     uint32_t h_start = get_group_id(0) * BLOCK_H + j * BLOCK_V;
 
-    if (get_group_id(0) * BLOCK_H == v_start) {
+    if (h_start == v_start) {
       // This block is skipped and processed by separate kernel in the next iteration.
-      return;
+      continue;
     }
 
     x_r[lid] = x[h_start + lid];
@@ -111,6 +119,7 @@ void prod_diff_realrealvec(
         exponentY += normalize_exponent(&prodY);
       }
     }
+    barrier(CLK_LOCAL_MEM_FENCE);
   }
 
   exponentX += atomic_mul_normalize(&g_prodX[v].prod, prodX);
