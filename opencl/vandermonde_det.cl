@@ -92,7 +92,7 @@ void horizontal_reduce(__local int32_t* exponents, __local double* products, int
 
 
 __kernel
-//__attribute__((reqd_work_group_size(256, 1, 1)))
+__attribute__((reqd_work_group_size(BLOCK_SIZE, 1, 1)))
 void prod_diff_realrealvec(
         const int32_t start_offset,
         __global const double *x,
@@ -105,27 +105,36 @@ void prod_diff_realrealvec(
     return;
   }
 
-  uint32_t r = get_global_id(0);
+  uint32_t gid = get_global_id(0);
   const uint32_t lid = get_local_id(0);
 
-  __local int32_t exponents[WORKGROUP_SIZE / 2];
-  __local double products[WORKGROUP_SIZE / 2];
+//  __local int32_t exponents[WORKGROUP_SIZE / 2];
+//  __local double products[WORKGROUP_SIZE / 2];
+
+  __local double x_r[WORKGROUP_SIZE];
+  __local double y_r[WORKGROUP_SIZE];
+
+  x_r[lid] = x[gid];
+  y_r[lid] = y[gid];
+
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  double prodX = 1.0;
+  double prodY = 1.0;
+  int32_t exponentX = 0;
+  int32_t exponentY = 0;
+
+  double x_offset = x[start_offset + lid];
+  double y_offset = y[start_offset + lid];
 
   for(int i = 0; i < BLOCK_SIZE; ++i) {
-    int32_t offset = start_offset + i;
-
-    double prodX = 1.0;
-    double prodY = 1.0;
-    int32_t exponentX = 0;
-    int32_t exponentY = 0;
-
-    prodX *= x[r] - x[offset];
-    prodY *= x[r] - y[offset];
+    prodX *= x_r[i] - x_offset;
+    prodY *= x_r[i] - y_offset;
 
     exponentX += normalize_exponent(&prodX);
     exponentY += normalize_exponent(&prodY);
 
-    horizontal_reduce(exponents, products, exponentX, prodX);
+/*    horizontal_reduce(exponents, products, exponentX, prodX);
     if (lid == 0) {
       exponentX = exponents[0];
       prodX = products[0];
@@ -147,8 +156,10 @@ void prod_diff_realrealvec(
 //      if (exponentY == 19 || prodY == 0.99|| exponentX == 19 || prodX == 0.99) {
 //        atomic_add(&g_prodX[offset].exponent, 1);
 //      }
+
     }
 
     barrier(CLK_LOCAL_MEM_FENCE);
+    */
   }
 }
