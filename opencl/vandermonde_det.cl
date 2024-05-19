@@ -84,22 +84,24 @@ void finish_block_processing(
 ) {
     const uint32_t lid = get_local_id(0);
 
+    __local double x_local[BLOCK_V];
+    x_local[lid] = x[v_start + lid];
+    barrier(CLK_LOCAL_MEM_FENCE);
 
-
-    for(int v = v_start; v < v_start + BLOCK_V; v++) {
+    for(int v = 0; v < BLOCK_V; v++) {
       double prodX = 1.0;
       double prodY = 1.0;
       int32_t exponentX = 0;
       int32_t exponentY = 0;
 
-      double x_v = x[v];
-      double y_v = y[v];
+      double x_v = x_local[v];
+      double y_v = y[v_start + v];
 
       if (lid == 0) {
         for(int i = 0; i < BLOCK_V; ++i) {
-          if (v_start + i != v) {
-            prodX *= x[v_start + i] - x_v;
-            prodY *= x[v_start + i] - y_v;
+          if (i != v) {
+            prodX *= x_local[i] - x_v;
+            prodY *= x_local[i] - y_v;
           }
 
           if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
@@ -108,10 +110,10 @@ void finish_block_processing(
           }
         }
 
-        exponentX += atomic_mul_normalize(&g_prodX[v].prod, prodX);
-        exponentY += atomic_mul_normalize(&g_prodY[v].prod, prodY);
-        atomic_add(&g_prodX[v].exponent, exponentX);
-        atomic_add(&g_prodY[v].exponent, exponentY);
+        exponentX += atomic_mul_normalize(&g_prodX[v_start + v].prod, prodX);
+        exponentY += atomic_mul_normalize(&g_prodY[v_start + v].prod, prodY);
+        atomic_add(&g_prodX[v_start + v].exponent, exponentX);
+        atomic_add(&g_prodY[v_start + v].exponent, exponentY);
       }
 
     }
