@@ -80,19 +80,6 @@ void prod_diff_realrealvec(
   __local double x_r[BLOCK_V];
   __local double y_r[BLOCK_V];
 
-  uint32_t h_start = get_group_id(0) * BLOCK_H;
-
-  if (get_group_id(0) == v_start / BLOCK_H) {
-    // This block is skipped and processed by separate kernel in the next iteration.
-    return;
-  }
-
-
-  x_r[lid] = x[h_start + lid];
-  y_r[lid] = y[h_start + lid];
-
-  barrier(CLK_LOCAL_MEM_FENCE);
-
   double prodX = 1.0; // TODO: directly assign to x[offset]
   double prodY = 1.0;
   int32_t exponentX = 0;
@@ -102,13 +89,27 @@ void prod_diff_realrealvec(
   double x_v = x[v];
   double y_v = y[v];
 
-  for(int i = 0; i < BLOCK_H; ++i) {
-    prodX *= x_r[i] - x_v;
-    prodY *= x_r[i] - y_v;
+  for(int j = 0; j < BLOCK_H / BLOCK_V; ++j) {
 
-    if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
-      exponentX += normalize_exponent(&prodX);
-      exponentY += normalize_exponent(&prodY);
+    uint32_t h_start = get_group_id(0) * BLOCK_H + j * BLOCK_V;
+
+    if (get_group_id(0) * BLOCK_H == v_start) {
+      // This block is skipped and processed by separate kernel in the next iteration.
+      return;
+    }
+
+    x_r[lid] = x[h_start + lid];
+    y_r[lid] = y[h_start + lid];
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for(int i = 0; i < BLOCK_V; ++i) {
+      prodX *= x_r[i] - x_v;
+      prodY *= x_r[i] - y_v;
+
+      if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
+        exponentX += normalize_exponent(&prodX);
+        exponentY += normalize_exponent(&prodY);
+      }
     }
   }
 

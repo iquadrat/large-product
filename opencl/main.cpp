@@ -163,7 +163,7 @@ private:
       kernel_prod_diff_realrealvec.setArg(4, bufferProdY);
 
       cl_int err = queue.enqueueNDRangeKernel(
-              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(N), cl::NDRange(BLOCK_V), nullptr, nullptr);
+              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(N * (BLOCK_H / BLOCK_V)), cl::NDRange(BLOCK_V), nullptr, nullptr);
       context.checkErr(err, "kernel");
     }
 
