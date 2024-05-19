@@ -27,21 +27,22 @@ public:
 
     void run(int32_t N, const std::vector<double>& x, const std::vector<double>& y) {
       this->N = N;
-      this->blockCount = (N + BLOCK_SIZE - 1)  / BLOCK_SIZE;
+      this->blockHCount = (N + BLOCK_H - 1)  / BLOCK_H;
       setup();
 
-      std::cout << "blockCount = " << blockCount << std::endl;
+      std::cout << "blockCount = " << blockHCount << std::endl;
+      const uint32_t blockVCount = (N + BLOCK_V - 1) / BLOCK_V;
 
 //      copyInputBuffers(x, y);
 //      benchmark_iteration();
 
       copyInputBuffers(x, y);
       timer.restart();
-      for(int32_t b = 0; b < blockCount; b++) {
+      for(int32_t b = 0; b < blockVCount; b++) {
         schedule_compute_products(b);
 
-        if ((b * BLOCK_SIZE) % (1 << 14) == 0) {
-          print_intermediate_result(b * BLOCK_SIZE);
+        if ((b * BLOCK_V) % (1 << 14) == 0) {
+          print_intermediate_result(b * BLOCK_V);
         }
       }
 
@@ -52,7 +53,8 @@ public:
     }
 
 private:
-    const int32_t BLOCK_SIZE = 256;
+    const int32_t BLOCK_H = 256;
+    const int32_t BLOCK_V = 256;
 //    const size_t workgroupSize = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
     //const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
@@ -60,7 +62,7 @@ private:
     OpenClContext& context;
 
     int32_t N;
-    int32_t blockCount;
+    int32_t blockHCount;
 
     cl::Buffer bufferX;
     cl::Buffer bufferY;
@@ -77,10 +79,10 @@ private:
 
     void setup() {
       std::cout << "sizeof(LargeProduct) = " << sizeof(LargeProduct) << std::endl;
-      bufferX = context.createBuffer("x", sizeof(double) * blockCount * BLOCK_SIZE, CL_MEM_READ_WRITE);
-      bufferY = context.createBuffer("y", sizeof(double) * blockCount * BLOCK_SIZE, CL_MEM_READ_ONLY);
-      bufferProdX = context.createBuffer("prodX", sizeof(LargeProduct) * blockCount * BLOCK_SIZE, CL_MEM_READ_WRITE);
-      bufferProdY = context.createBuffer("prodY", sizeof(LargeProduct) * blockCount * BLOCK_SIZE, CL_MEM_READ_WRITE);
+      bufferX = context.createBuffer("x", sizeof(double) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
+      bufferY = context.createBuffer("y", sizeof(double) * blockHCount * BLOCK_H, CL_MEM_READ_ONLY);
+      bufferProdX = context.createBuffer("prodX", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
+      bufferProdY = context.createBuffer("prodY", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
 
       std::vector<std::string> files;
       files.push_back("large_product.h");
@@ -88,8 +90,8 @@ private:
 
       std::stringstream options_stream;
       options_stream << " -DMULS_PER_EXPONENT_EXTRACTION=" << MULS_PER_EXPONENT_EXTRACTION;
-      options_stream << " -DWORKGROUP_SIZE=" << BLOCK_SIZE;
-      options_stream << " -DBLOCK_SIZE=" << BLOCK_SIZE;
+      options_stream << " -DBLOCK_V=" << BLOCK_V;
+      options_stream << " -DBLOCK_H=" << BLOCK_H;
       options_stream << " -DVECTOR_SIZE=" << N;
       options_stream << " -cl-std=CL2.0 ";
 //      options_stream << " -cl-denorms-are-zero -cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros -cl-uniform-work-group-size";
@@ -128,18 +130,18 @@ private:
         double mean = sum / runs;
         double stddev = sqrt(sumSq / runs + mean * mean);
 
-        std::cout << "Benchmark results: \n  Iteration time: " << mean << " stddev: " << stddev << std::endl;
-        double bytesRead = 1.0 * sizeof(double) * ((N - BLOCK_SIZE) + blockCount * 2 * BLOCK_SIZE);
-        double flops = 1.0 * (N - BLOCK_SIZE) * BLOCK_SIZE * 2.0; /* 2 ops per vector element */
-        std::cout << "  Memory read rate: " << bytesRead / mean / 1e9 << " GB/s" << std::endl;
-        std::cout << "  64bit flops: " << flops / mean / 1e9 << " /s" << std::endl;
+//        std::cout << "Benchmark results: \n  Iteration time: " << mean << " stddev: " << stddev << std::endl;
+//        double bytesRead = 1.0 * sizeof(double) * ;
+//        double flops = 1.0 * (N - BLOCK_SIZE) * BLOCK_SIZE * 2.0; /* 2 ops per vector element */
+//        std::cout << "  Memory read rate: " << bytesRead / mean / 1e9 << " GB/s" << std::endl;
+//        std::cout << "  64bit flops: " << flops / mean / 1e9 << " /s" << std::endl;
     }
 
     double run_benchmark(int32_t blocks) {
       queue.finish();
 
-      if (blocks * BLOCK_SIZE > N) {
-        blocks = N / BLOCK_SIZE;
+      if (blocks * BLOCK_V > N) {
+        blocks = N / BLOCK_V;
       }
 
       timer.start();
@@ -152,8 +154,8 @@ private:
       return timer.getTimeElapsed();
     }
 
-    void schedule_compute_products(int32_t blockOffset) {
-      int32_t offset = blockOffset * BLOCK_SIZE;
+    void schedule_compute_products(int32_t blockVOffset) {
+      int32_t offset = blockVOffset * BLOCK_V;
       kernel_prod_diff_realrealvec.setArg(0, offset);
       kernel_prod_diff_realrealvec.setArg(1, bufferX);
       kernel_prod_diff_realrealvec.setArg(2, bufferY);
@@ -161,7 +163,7 @@ private:
       kernel_prod_diff_realrealvec.setArg(4, bufferProdY);
 
       cl_int err = queue.enqueueNDRangeKernel(
-              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(N), cl::NDRange(BLOCK_SIZE), nullptr, nullptr);
+              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(N), cl::NDRange(BLOCK_V), nullptr, nullptr);
       context.checkErr(err, "kernel");
     }
 
@@ -180,21 +182,21 @@ private:
       }
 
       if (i == 0) {
-        if (BLOCK_SIZE == 64) {
+        if (BLOCK_V == 64) {
           expect_prod(prodX,  {1.28871 ,-1310276});
           expect_prod(prodY, {1.72555 ,-1336068});
         }
-        if (BLOCK_SIZE == 256) {
+        if (BLOCK_V == 256) {
           expect_prod(prodX, { 1.87554, -1310049 });
           expect_prod(prodY, { -1.23407 , -1335825});
         }
       }
       if (i == 16384) {
-        if (BLOCK_SIZE == 64) {
+        if (BLOCK_V == 64) {
           expect_prod(prodX,  {1.17407, -1180929 });
           expect_prod(prodY,  {-1.05701, -1369915 });
         }
-        if (BLOCK_SIZE == 256) {
+        if (BLOCK_V == 256) {
           expect_prod(prodX, {  -1.21037, -1180713 });
           expect_prod(prodY, {  1.41641, -1369695 });
         }
@@ -219,8 +221,8 @@ private:
         std::cout << "\t / " << prodY[i].prod << " * 2^" << prodY[i].exponent << std::endl;
       }
 
-      double bytesRead = 1.0 * sizeof(double) * N * N / BLOCK_SIZE;
-      double flops =(1.0 * N * (N - BLOCK_SIZE * BLOCK_SIZE)) * 2 * 2; /* 2 ops per vector element */
+      double bytesRead = 1.0 * sizeof(double) * 2 * (N / BLOCK_V) * (N / BLOCK_H) * (BLOCK_H + BLOCK_V);
+      double flops =(1.0 * N * N) * 2 * 2; /* 2 ops per vector element */
       std::cout << "Memory read rate: " << bytesRead / timer.getTimeElapsed() / 1e9 << " GB/s" << std::endl;
       std::cout << "64bit flops: " << flops / timer.getTimeElapsed() / 1e9 << " Gflops/s" << std::endl;
 

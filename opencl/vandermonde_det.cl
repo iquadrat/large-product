@@ -64,74 +64,47 @@ int32_t atomic_mul_normalize(volatile __global double *source, const double mul)
   return exponent;
 }
 
-void horizontal_reduce(__local int32_t* exponents, __local double* products, int32_t exponent, double product) {
-  const uint32_t lid = get_local_id(0);
-
-  // local memory reduction
-  if (lid >= WORKGROUP_SIZE/2) {
-    exponents[lid - WORKGROUP_SIZE/2] = exponent;
-    products[lid - WORKGROUP_SIZE/2] = product;
-  }
-  barrier(CLK_LOCAL_MEM_FENCE);
-
-  if (lid < WORKGROUP_SIZE/2) {
-    exponents[lid] = exponent + exponents[lid];
-    products[lid]  = product * products[lid];
-  }
-  barrier(CLK_LOCAL_MEM_FENCE);
-
-  // wavefront reduction
-  int i = WORKGROUP_SIZE / 4;
-  for(; i > 0; i /= 2) {
-    if (lid < i) {
-      exponents[lid] += exponents[lid + i];
-      products[lid]  *= products[lid + i];
-    }
-  }
-}
-
 
 __kernel
-__attribute__((reqd_work_group_size(BLOCK_SIZE, 1, 1)))
+__attribute__((reqd_work_group_size(BLOCK_V, 1, 1)))
 void prod_diff_realrealvec(
-        const int32_t start_offset,
+        const int32_t v_start,
         __global const double *x,
         __global const double *y,
         __global struct LargeProduct *g_prodX,
         __global struct LargeProduct *g_prodY
 ) {
-  if (get_group_id(0) == start_offset / BLOCK_SIZE) {
+  uint32_t gid = get_global_id(0);
+  const uint32_t lid = get_local_id(0);
+
+  __local double x_r[BLOCK_V];
+  __local double y_r[BLOCK_V];
+
+  uint32_t h_start = get_group_id(0) * BLOCK_H;
+
+  if (get_group_id(0) == v_start / BLOCK_H) {
     // This block is skipped and processed by separate kernel in the next iteration.
     return;
   }
 
-  uint32_t gid = get_global_id(0);
-  const uint32_t lid = get_local_id(0);
 
-//  __local int32_t exponents[WORKGROUP_SIZE / 2];
-//  __local double products[WORKGROUP_SIZE / 2];
-
-  __local double x_r[WORKGROUP_SIZE];
-  __local double y_r[WORKGROUP_SIZE];
-
-  x_r[lid] = x[gid];
-  y_r[lid] = y[gid];
+  x_r[lid] = x[h_start + lid];
+  y_r[lid] = y[h_start + lid];
 
   barrier(CLK_LOCAL_MEM_FENCE);
 
-  double prodX = 1.0;
+  double prodX = 1.0; // TODO: directly assign to x[offset]
   double prodY = 1.0;
   int32_t exponentX = 0;
   int32_t exponentY = 0;
 
-  uint32_t offset = start_offset + lid;
+  uint32_t v = v_start + lid;
+  double x_v = x[v];
+  double y_v = y[v];
 
-  double x_offset = x[offset];
-  double y_offset = y[offset];
-
-  for(int i = 0; i < BLOCK_SIZE; ++i) {
-    prodX *= x_r[i] - x_offset;
-    prodY *= x_r[i] - y_offset;
+  for(int i = 0; i < BLOCK_H; ++i) {
+    prodX *= x_r[i] - x_v;
+    prodY *= x_r[i] - y_v;
 
     if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
       exponentX += normalize_exponent(&prodX);
@@ -139,8 +112,8 @@ void prod_diff_realrealvec(
     }
   }
 
-  exponentX += atomic_mul_normalize(&g_prodX[offset].prod, prodX);
-  exponentY += atomic_mul_normalize(&g_prodY[offset].prod, prodY);
-  atomic_add(&g_prodX[offset].exponent, exponentX);
-  atomic_add(&g_prodY[offset].exponent, exponentY);
+  exponentX += atomic_mul_normalize(&g_prodX[v].prod, prodX);
+  exponentY += atomic_mul_normalize(&g_prodY[v].prod, prodY);
+  atomic_add(&g_prodX[v].exponent, exponentX);
+  atomic_add(&g_prodY[v].exponent, exponentY);
 }
