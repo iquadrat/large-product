@@ -72,6 +72,7 @@ int32_t atomic_mul_normalize(volatile __global double *source, const double mul)
 #endif
 }
 
+#define SPECIAL_GROUPS 1
 
 __kernel
 __attribute__((reqd_work_group_size(BLOCK_V, 1, 1)))
@@ -82,8 +83,48 @@ void prod_diff_realrealvec(
         __global struct LargeProduct *g_prodX,
         __global struct LargeProduct *g_prodY
 ) {
-  uint32_t gid = get_global_id(0);
   const uint32_t lid = get_local_id(0);
+  const int32_t gid = get_group_id(0) - SPECIAL_GROUPS;
+
+  if (gid < 0) {
+    if (v_start == 0) {
+      return;
+    }
+
+    // Process elements of previously skipped block.
+    const uint32_t v_start_previous = v_start - BLOCK_V;
+
+    for(int v = v_start_previous; v < v_start; v++) {
+      double prodX = 1.0;
+      double prodY = 1.0;
+      int32_t exponentX = 0;
+      int32_t exponentY = 0;
+
+      double x_v = x[v];
+      double y_v = y[v];
+
+      if (lid == 0) {
+        for(int i = 0; i < BLOCK_V; ++i) {
+          if (v_start_previous + i != v) {
+            prodX *= x[v_start_previous + i] - x_v;
+            prodY *= x[v_start_previous + i] - y_v;
+          }
+
+          if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
+            exponentX += normalize_exponent(&prodX);
+            exponentY += normalize_exponent(&prodY);
+          }
+        }
+
+        exponentX += atomic_mul_normalize(&g_prodX[v].prod, prodX);
+        exponentY += atomic_mul_normalize(&g_prodY[v].prod, prodY);
+        atomic_add(&g_prodX[v].exponent, exponentX);
+        atomic_add(&g_prodY[v].exponent, exponentY);
+      }
+
+    }
+    return;
+  }
 
   __local double x_r[BLOCK_V];
 
@@ -98,7 +139,7 @@ void prod_diff_realrealvec(
 
   for(int j = 0; j < BLOCK_H / BLOCK_V; ++j) {
 
-    uint32_t h_start = get_group_id(0) * BLOCK_H + j * BLOCK_V;
+    uint32_t h_start = gid * BLOCK_H + j * BLOCK_V;
 
     if (h_start == v_start) {
       // This block is skipped and processed by separate kernel in the next iteration.
@@ -109,6 +150,10 @@ void prod_diff_realrealvec(
     barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int i = 0; i < BLOCK_V; ++i) {
+//      if (h_start + i != v) {
+//        continue;
+//      }
+
       prodX *= x_r[i] - x_v;
       prodY *= x_r[i] - y_v;
 

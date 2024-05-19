@@ -31,18 +31,18 @@ public:
       setup();
 
       std::cout << "blockHCount = " << blockHCount << std::endl;
-      const uint32_t blockVCount = (N + BLOCK_V - 1) / BLOCK_V;
+      this->blockVCount = (N + BLOCK_V - 1) / BLOCK_V;
 
 //      copyInputBuffers(x, y);
 //      benchmark_iteration();
 
       copyInputBuffers(x, y);
       timer.restart();
-      for(int32_t b = 0; b < blockVCount; b++) {
+      for(int32_t b = 0; b < blockVCount + 1; b++) {
         schedule_compute_products(b);
 
-        if ((b * BLOCK_V) % (1 << 16) == 0) {
-          print_intermediate_result(b * BLOCK_V);
+        if ((b * BLOCK_V) % (1 << 16) == BLOCK_V) {
+          print_intermediate_result((b -1) * BLOCK_V);
         }
       }
 
@@ -63,6 +63,7 @@ private:
 
     int32_t N;
     int32_t blockHCount;
+    int32_t blockVCount;
 
     cl::Buffer bufferX;
     cl::Buffer bufferY;
@@ -162,8 +163,13 @@ private:
       kernel_prod_diff_realrealvec.setArg(3, bufferProdX);
       kernel_prod_diff_realrealvec.setArg(4, bufferProdY);
 
+      int32_t elements = (1 + (N / BLOCK_H)) * BLOCK_V;
+      if (blockVOffset == blockVCount) {
+        elements = BLOCK_V;
+      }
+
       cl_int err = queue.enqueueNDRangeKernel(
-              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(N / (BLOCK_H / BLOCK_V)), cl::NDRange(BLOCK_V), nullptr, nullptr);
+              kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(elements), cl::NDRange(BLOCK_V), nullptr, nullptr);
       context.checkErr(err, "kernel");
     }
 
@@ -182,24 +188,12 @@ private:
       }
 
       if (i == 0) {
-        if (BLOCK_V == 64) {
-          expect_prod(prodX,  {1.28871 ,-1310276});
-          expect_prod(prodY, {1.72555 ,-1336068});
-        }
-        if (BLOCK_V == 256) {
-          expect_prod(prodX, { 1.87554, -1310049 });
-          expect_prod(prodY, { -1.23407 , -1335825});
-        }
+          expect_prod(prodX,  { -1.36992 , -1310370 });
+          expect_prod(prodY, { -1.74623 , -1336159 });
       }
       if (i == 65536) {
-        if (BLOCK_V == 64) {
-          expect_prod(prodX,  {-1.15912, -1220984  });
-          expect_prod(prodY,  {-1.91744, -1424810 });
-        }
-        if (BLOCK_V == 256) {
-          expect_prod(prodX, {  1.88024, -1220782 });
-          expect_prod(prodY, {  -1.58026, -1424560 });
-        }
+          expect_prod(prodX,  { 1.32937 , -1221069 });
+          expect_prod(prodY,  { 1.90488 , -1424903 });
       }
 
     }
@@ -211,7 +205,7 @@ private:
       std::vector<LargeProduct> prodX(N);
       std::vector<LargeProduct> prodY(N);
       queue.enqueueReadBuffer(bufferProdX, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodX[0]);
-      queue.enqueueReadBuffer(bufferProdX, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodY[0]);
+      queue.enqueueReadBuffer(bufferProdY, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodY[0]);
 
       for(int i=0; i<N; ++i) {
         if (i > 100 && i< (N-100)) {
