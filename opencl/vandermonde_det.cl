@@ -133,10 +133,10 @@ void prod_diff_realrealvec(
     prodX *= x_r[i] - x_offset;
     prodY *= x_r[i] - y_offset;
 
-//    if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
+    if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
       exponentX += normalize_exponent(&prodX);
       exponentY += normalize_exponent(&prodY);
-//    }
+    }
   }
 
   exponentX += atomic_mul_normalize(&g_prodX[offset].prod, prodX);
