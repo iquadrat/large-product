@@ -124,42 +124,23 @@ void prod_diff_realrealvec(
   int32_t exponentX = 0;
   int32_t exponentY = 0;
 
-  double x_offset = x[start_offset + lid];
-  double y_offset = y[start_offset + lid];
+  uint32_t offset = start_offset + lid;
+
+  double x_offset = x[offset];
+  double y_offset = y[offset];
 
   for(int i = 0; i < BLOCK_SIZE; ++i) {
     prodX *= x_r[i] - x_offset;
     prodY *= x_r[i] - y_offset;
 
-    exponentX += normalize_exponent(&prodX);
-    exponentY += normalize_exponent(&prodY);
-
-/*    horizontal_reduce(exponents, products, exponentX, prodX);
-    if (lid == 0) {
-      exponentX = exponents[0];
-      prodX = products[0];
-    }
-    barrier(CLK_LOCAL_MEM_FENCE);
-
-    horizontal_reduce(exponents, products, exponentY, prodY);
-    if (lid == 0) {
-      exponentY = exponents[0];
-      prodY = products[0];
-
-//      exponentX += normalize_exponent(&prodX);
-//      exponentY += normalize_exponent(&prodY);
-
-      exponentX += atomic_mul_normalize(&g_prodX[offset].prod, prodX);
-      exponentY += atomic_mul_normalize(&g_prodY[offset].prod, prodY);
-      atomic_add(&g_prodX[offset].exponent, exponentX);
-      atomic_add(&g_prodY[offset].exponent, exponentY);
-//      if (exponentY == 19 || prodY == 0.99|| exponentX == 19 || prodX == 0.99) {
-//        atomic_add(&g_prodX[offset].exponent, 1);
-//      }
-
-    }
-
-    barrier(CLK_LOCAL_MEM_FENCE);
-    */
+//    if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
+      exponentX += normalize_exponent(&prodX);
+      exponentY += normalize_exponent(&prodY);
+//    }
   }
+
+  exponentX += atomic_mul_normalize(&g_prodX[offset].prod, prodX);
+  exponentY += atomic_mul_normalize(&g_prodY[offset].prod, prodY);
+  atomic_add(&g_prodX[offset].exponent, exponentX);
+  atomic_add(&g_prodY[offset].exponent, exponentY);
 }
