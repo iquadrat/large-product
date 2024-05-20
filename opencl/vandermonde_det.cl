@@ -117,16 +117,18 @@ void finish_block_processing(
     __local int32_t exponents[BLOCK_V / 2];
     __local double products[BLOCK_V / 2];
 
-    for(int v = 0; v < BLOCK_V; v++) {
+    for(int v_i = 0; v_i < BLOCK_V; v_i++) {
+      int32_t v = v_start + v_i;
+
       double prodX = 1.0;
       double prodY = 1.0;
       int32_t exponentX = 0;
       int32_t exponentY = 0;
 
-      double x_v = x_local[v];
-      double y_v = y[v_start + v];
+      double x_v = x_local[v_i];
+      double y_v = y[v];
 
-      if (lid != v) {
+      if (lid != v_i) {
         prodX = x_local[lid] - x_v;
         prodY = x_local[lid] - y_v;
         exponentX = normalize_exponent(&prodX);
@@ -135,19 +137,21 @@ void finish_block_processing(
 
       horizontal_reduce(exponents, products, exponentX, prodX);
       if (lid == 0) {
-        double prod = g_prodX[v_start + v].prod * products[0];
-        double exponent = g_prodX[v_start + v].exponent + normalize_exponent(&prod) + exponents[0];
-        g_prodX[v_start + v].prod = prod;
-        g_prodX[v_start + v].exponent = exponent;
+        double prod = g_prodX[v].prod * products[0];
+        double exponent = g_prodX[v].exponent + normalize_exponent(&prod) + exponents[0];
+        g_prodX[v].prod = prod;
+        g_prodX[v].exponent = exponent;
       }
 
       horizontal_reduce(exponents, products, exponentY, prodY);
       if (lid == 0) {
-        double prod = g_prodY[v_start + v].prod * products[0];
-        double exponent =  g_prodY[v_start + v].exponent + normalize_exponent(&prod) + exponents[0];
-        g_prodY[v_start + v].prod = prod;
-        g_prodY[v_start + v].exponent = exponent;
+        double prod = g_prodY[v].prod * products[0];
+        double exponent =  g_prodY[v].exponent + normalize_exponent(&prod) + exponents[0];
+        g_prodY[v].prod = prod;
+        g_prodY[v].exponent = exponent;
       }
+
+
       barrier(CLK_LOCAL_MEM_FENCE);
     }
 }
