@@ -153,19 +153,18 @@ void finish_block_processing(
     __local int32_t exponents[BLOCK_V / 2];
     __local double products[BLOCK_V / 2];
 
-    for(int v = 0; v < BLOCK_V; v++) {
-
-      int32_t xxx = v_start + v;
+    for(int v_i = 0; v_i < BLOCK_V; v_i++) {
+      int32_t v = v_start + v_i;
 
       double prodX = 1.0;
       double prodY = 1.0;
       int32_t exponentX = 0;
       int32_t exponentY = 0;
 
-      double x_v = x[xxx];
-      double y_v = y[xxx];
+      double x_v = x[v];
+      double y_v = y[v];
 
-      if (lid != v) {
+      if (lid != v_i) {
         prodX *= x[v_start + lid] - x_v;
         prodY *= x[v_start + lid] - y_v;
         exponentX += normalize_exponent(&prodX);
@@ -197,14 +196,14 @@ void finish_block_processing(
         prodY = products[0];
         exponentY = exponents[0];
 
-        exponentX += atomic_mul_normalize(&g_prodX[v_start + v].significand, prodX);
-        exponentY += atomic_mul_normalize(&g_prodY[v_start + v].significand, prodY);
-        atomic_add(&g_prodX[v_start + v].exponent, exponentX);
-        atomic_add(&g_prodY[v_start + v].exponent, exponentY);
+        exponentX += atomic_mul_normalize(&g_prodX[v].significand, prodX);
+        exponentY += atomic_mul_normalize(&g_prodY[v].significand, prodY);
+        atomic_add(&g_prodX[v].exponent, exponentX);
+        atomic_add(&g_prodY[v].exponent, exponentY);
 
-        bool should_move = should_move_particle(xxx, x[xxx], y[xxx], g_prodX[xxx], g_prodY[xxx], deltaE);
+        bool should_move = should_move_particle(v, x[v], y[v], g_prodX[v], g_prodY[v], deltaE);
         if (should_move) {
-          x[xxx] = y[xxx];
+          x[v] = y[v];
         }
       }
 
