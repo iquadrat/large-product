@@ -146,9 +146,9 @@ void finish_block_processing(
 ) {
     const uint32_t lid = get_local_id(0);
 
-/*    __local double x_local[BLOCK_V];
+    __local double x_local[BLOCK_V];
     x_local[lid] = x[v_start + lid];
-    barrier(CLK_LOCAL_MEM_FENCE);*/
+    barrier(CLK_LOCAL_MEM_FENCE);
 
     __local int32_t exponents[BLOCK_V / 2];
     __local double products[BLOCK_V / 2];
@@ -161,12 +161,12 @@ void finish_block_processing(
       int32_t exponentX = 0;
       int32_t exponentY = 0;
 
-      double x_v = x[v];
+      double x_v = x_local[v_i];
       double y_v = y[v];
 
       if (lid != v_i) {
-        prodX = x[v_start + lid] - x_v;
-        prodY = x[v_start + lid] - y_v;
+        prodX = x_local[lid] - x_v;
+        prodY = x_local[lid] - y_v;
         exponentX = normalize_exponent(&prodX);
         exponentY = normalize_exponent(&prodY);
       }
@@ -204,6 +204,7 @@ void finish_block_processing(
         bool should_move = should_move_particle(v, x[v], y[v], g_prodX[v], g_prodY[v], deltaE);
         if (should_move) {
           x[v] = y[v];
+          x_local[v_i] = y[v];
         }
       }
 
