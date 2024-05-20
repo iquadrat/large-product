@@ -146,57 +146,40 @@ void finish_block_processing(
 ) {
     const uint32_t lid = get_local_id(0);
 
-    __local double x_local[BLOCK_V];
+/*    __local double x_local[BLOCK_V];
     x_local[lid] = x[v_start + lid];
-    barrier(CLK_LOCAL_MEM_FENCE);
+    barrier(CLK_LOCAL_MEM_FENCE);*/
 
-    __local int32_t exponents[BLOCK_V / 2];
-    __local double products[BLOCK_V / 2];
-
-    for(int v_i = 0; v_i < BLOCK_V; v_i++) {
-      int32_t v = v_start + v_i;
-
+    for(int v = 0; v < BLOCK_V; v++) {
       double prodX = 1.0;
       double prodY = 1.0;
       int32_t exponentX = 0;
       int32_t exponentY = 0;
 
-      double x_v = x_local[v_i];
-      double y_v = y[v];
+      double x_v = x[v_start + v];
+      double y_v = y[v_start + v];
 
-      if (lid != v_i) {
-        prodX = x_local[lid] - x_v;
-        prodY = x_local[lid] - y_v;
-        exponentX = normalize_exponent(&prodX);
-        exponentY = normalize_exponent(&prodY);
-      }
-
-      struct LargeProduct lpX;
-      struct LargeProduct lpY;
-
-      horizontal_reduce(exponents, products, exponentX, prodX);
       if (lid == 0) {
-        double prod = g_prodX[v].significand * products[0];
-        double exponent = g_prodX[v].exponent + normalize_exponent(&prod) + exponents[0];
-        lpX.significand = prod;
-        lpX.exponent = exponent;
-        g_prodX[v] = lpX;
-      }
+        for(int i = 0; i < BLOCK_V; ++i) {
+          if (i != v) {
+            prodX *= x[v_start + i] - x_v;
+            prodY *= x[v_start + i] - y_v;
+          }
 
-      barrier(CLK_LOCAL_MEM_FENCE);
+          if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
+            exponentX += normalize_exponent(&prodX);
+            exponentY += normalize_exponent(&prodY);
+          }
+        }
 
-      horizontal_reduce(exponents, products, exponentY, prodY);
-      if (lid == 0) {
-        double prod = g_prodY[v].significand * products[0];
-        double exponent =  g_prodY[v].exponent + normalize_exponent(&prod) + exponents[0];
-        lpY.significand = prod;
-        lpY.exponent = exponent;
-        g_prodY[v] = lpY;
+        exponentX += atomic_mul_normalize(&g_prodX[v_start + v].significand, prodX);
+        exponentY += atomic_mul_normalize(&g_prodY[v_start + v].significand, prodY);
+        atomic_add(&g_prodX[v_start + v].exponent, exponentX);
+        atomic_add(&g_prodY[v_start + v].exponent, exponentY);
 
-        bool should_move = should_move_particle(v, x[v], y[v], lpX, lpY, deltaE);
+        bool should_move = should_move_particle(v_start + v, x[v_start + v], y[v_start + v], g_prodX[v_start + v], g_prodY[v_start + v], deltaE);
         if (should_move) {
-          x[v] = y[v];
-          x_local[v] = y[v];
+          x[v_start + v] = y[v_start + v];
         }
       }
 
