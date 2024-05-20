@@ -4,6 +4,8 @@
 #include <mm_malloc.h>
 #include "large_product.h"
 
+inline const double VANDERMONDE_DET_EXPONENT_BASIS_LOG = log(2.0);
+
 inline double* new_double_array(int64_t size) {
   // round up size to be a multiple of 4
   int64_t rounded_size = (size + 3) & ~3;
