@@ -165,10 +165,10 @@ void finish_block_processing(
       double y_v = y[v];
 
       if (lid != v_i) {
-        prodX *= x[v_start + lid] - x_v;
-        prodY *= x[v_start + lid] - y_v;
-        exponentX += normalize_exponent(&prodX);
-        exponentY += normalize_exponent(&prodY);
+        prodX = x[v_start + lid] - x_v;
+        prodY = x[v_start + lid] - y_v;
+        exponentX = normalize_exponent(&prodX);
+        exponentY = normalize_exponent(&prodY);
       }
 
       barrier(CLK_LOCAL_MEM_FENCE);
