@@ -154,13 +154,16 @@ void finish_block_processing(
     __local double products[BLOCK_V / 2];
 
     for(int v = 0; v < BLOCK_V; v++) {
+
+      int32_t xxx = v_start + v;
+
       double prodX = 1.0;
       double prodY = 1.0;
       int32_t exponentX = 0;
       int32_t exponentY = 0;
 
-      double x_v = x[v_start + v];
-      double y_v = y[v_start + v];
+      double x_v = x[xxx];
+      double y_v = y[xxx];
 
       if (lid != v) {
         prodX *= x[v_start + lid] - x_v;
@@ -199,9 +202,9 @@ void finish_block_processing(
         atomic_add(&g_prodX[v_start + v].exponent, exponentX);
         atomic_add(&g_prodY[v_start + v].exponent, exponentY);
 
-        bool should_move = should_move_particle(v_start + v, x[v_start + v], y[v_start + v], g_prodX[v_start + v], g_prodY[v_start + v], deltaE);
+        bool should_move = should_move_particle(xxx, x[xxx], y[xxx], g_prodX[xxx], g_prodY[xxx], deltaE);
         if (should_move) {
-          x[v_start + v] = y[v_start + v];
+          x[xxx] = y[xxx];
         }
       }
 
