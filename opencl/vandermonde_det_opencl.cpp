@@ -29,8 +29,8 @@ void VandermondeDetOpenCl::setup() {
   bufferDeltaE = context->createBuffer("deltaE", sizeof(double) * blockVCount * BLOCK_V, CL_MEM_READ_WRITE);
 
   std::vector<std::string> files;
-  files.push_back("large_product.h");
-  files.push_back("vandermonde_det.cl");
+  files.push_back("opencl/large_product.h");
+  files.push_back("opencl/vandermonde_det.cl");
 
   std::stringstream options_stream;
   options_stream << " -DMULS_PER_EXPONENT_EXTRACTION=" << MULS_PER_EXPONENT_EXTRACTION;

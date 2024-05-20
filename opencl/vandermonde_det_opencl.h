@@ -50,7 +50,7 @@ public:
     }
 
 private:
-    const int32_t BLOCK_H = 512; // Can be modified, possible values: 256, 512, 1024, ...
+    const int32_t BLOCK_H = 1024; // Can be modified, possible values: 256, 512, 1024, ...
     const int32_t BLOCK_V = 256; // Can be modified, possible values: 64, 128, 256
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
 
