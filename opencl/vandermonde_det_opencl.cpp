@@ -161,12 +161,12 @@ void VandermondeDetOpenCl::print_result(const vector<double>& xOld) {
     if (x[i] != xOld[i]) {
       moved += 1;
     }
-//    if (i > 100 && i< (N-100)) {
-//      continue;
-//    }
+    if (i > 100 && i< (N-100)) {
+      continue;
+    }
 //    std::cout << i << ":\t" << prodX[i].significand << " * 2^" << prodX[i].exponent;
 //    std::cout << "\t / " << prodY[i].significand << " * 2^" << prodY[i].exponent << std::endl;
-    cout << "x[" << i << "] = " << x[i] << "\t" << deltaE[i] << endl;
+//    cout << "x[" << i << "] = " << x[i] << "\t" << deltaE[i] << endl;
   }
 
   cout << "checksum = " << checksum << endl;

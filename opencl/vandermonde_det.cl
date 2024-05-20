@@ -171,37 +171,29 @@ void finish_block_processing(
         exponentY = normalize_exponent(&prodY);
       }
 
-      barrier(CLK_LOCAL_MEM_FENCE);
-      barrier(CLK_GLOBAL_MEM_FENCE);
+      struct LargeProduct lpX;
+      struct LargeProduct lpY;
 
       horizontal_reduce(exponents, products, exponentX, prodX);
-
-      barrier(CLK_LOCAL_MEM_FENCE);
-      barrier(CLK_GLOBAL_MEM_FENCE);
-
       if (lid == 0) {
-        prodX = products[0];
-        exponentX = exponents[0];
+        double prod = g_prodX[v].significand * products[0];
+        double exponent = g_prodX[v].exponent + normalize_exponent(&prod) + exponents[0];
+        lpX.significand = prod;
+        lpX.exponent = exponent;
+        g_prodX[v] = lpX;
       }
 
       barrier(CLK_LOCAL_MEM_FENCE);
-      barrier(CLK_GLOBAL_MEM_FENCE);
 
       horizontal_reduce(exponents, products, exponentY, prodY);
-
-      barrier(CLK_LOCAL_MEM_FENCE);
-      barrier(CLK_GLOBAL_MEM_FENCE);
-
       if (lid == 0) {
-        prodY = products[0];
-        exponentY = exponents[0];
+        double prod = g_prodY[v].significand * products[0];
+        double exponent =  g_prodY[v].exponent + normalize_exponent(&prod) + exponents[0];
+        lpY.significand = prod;
+        lpY.exponent = exponent;
+        g_prodY[v] = lpY;
 
-        exponentX += atomic_mul_normalize(&g_prodX[v].significand, prodX);
-        exponentY += atomic_mul_normalize(&g_prodY[v].significand, prodY);
-        atomic_add(&g_prodX[v].exponent, exponentX);
-        atomic_add(&g_prodY[v].exponent, exponentY);
-
-        bool should_move = should_move_particle(v, x[v], y[v], g_prodX[v], g_prodY[v], deltaE);
+        bool should_move = should_move_particle(v, x[v], y[v], lpX, lpY, deltaE);
         if (should_move) {
           x[v] = y[v];
           x_local[v_i] = y[v];
@@ -209,7 +201,6 @@ void finish_block_processing(
       }
 
       barrier(CLK_LOCAL_MEM_FENCE);
-      barrier(CLK_GLOBAL_MEM_FENCE);
     }
 }
 
