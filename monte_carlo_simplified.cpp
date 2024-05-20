@@ -81,6 +81,24 @@ public:
       return xNew;
     }
 
+    bool should_move_particle(
+            int32_t k,
+            double oldpos,
+            double newpos,
+            const LargeExponentFloat& prodOld,
+            const LargeExponentFloat& prodNew,
+            double r,
+            double& deltaE
+    ) {
+      const double division = std::abs(prodNew.significand / prodOld.significand);
+      double logdivision = log(division) + (prodNew.exponent - prodOld.exponent)*VANDERMONDE_DET_EXPONENT_BASIS_LOG;
+      double logfactor = log(newpos / oldpos);
+      double delta_e = potential_energy_combi(oldpos, newpos) + a * logfactor + logdivision * 2.0; // factor 2 to square the Vandermonde
+      assert(!isnan(delta_e));
+      deltaE = delta_e;
+      return  decide_metropolis(k, delta_e, newpos, newpos - oldpos, r);
+    }
+
     void run_iteration_cpu(const double* xNew, const double* uRandom) {
       int moved = 0;
       int skipped = 0;
@@ -106,18 +124,13 @@ public:
         prodNew.normalize_exponent();
         prodOld.normalize_exponent();
 
-        const double division = std::abs(prodNew.significand / prodOld.significand);
-        double logdivision = log(division) + (prodNew.exponent - prodOld.exponent)*VANDERMONDE_DET_EXPONENT_BASIS_LOG;
-        double logfactor = log(newpos / oldpos);
-        double delta_e = potential_energy_combi(oldpos, newpos) + a * logfactor + logdivision * 2.0; // factor 2 to square the Vandermonde
-        assert(!isnan(delta_e));
-        deltaE[k] = delta_e;
-        bool should_move_particle = decide_metropolis(k, delta_e, newpos, newpos - oldpos, uRandom[k]);
+        double delta_e;
+        bool shouldMoveParticle = should_move_particle(k, oldpos, newpos, prodOld, prodNew, uRandom[k], delta_e);
 
 //        cout << "oldpos " << oldpos<< "newpos " << newpos <<",divison " << division << ", logdivison " << logdivision << ", logfactor" << logfactor <<endl;
 //        cout << "k: " << k << ", delta_e = " << delta_e << ", move: " << should_move_particle << endl;
 
-        if (should_move_particle) {
+        if (shouldMoveParticle) {
           x[k] = xNew[k];
           moved += 1;
         }
@@ -181,7 +194,7 @@ int main(int argc, char** argv) {
   }
 
   constexpr const int N = 1024 * 1024;
-  constexpr const int iterations = 1;
+  constexpr const int iterations = 4;
 
   OpenClConfig config;
   config.platform = 0;
