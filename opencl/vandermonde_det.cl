@@ -229,7 +229,7 @@ void process_large_product_block_parallel(
   for(int j = 0; j < h_blocks; ++j) {
     uint32_t h_start_block = h_startX + j * BLOCK_V;
 
-    if (h_start_block == v_start) {
+    if (h_start_block == v_start || h_start_block == v_start - BLOCK_V) {
       // This block is skipped and processed by separate kernel in the next iteration.
       continue;
     }
@@ -269,16 +269,18 @@ void prod_diff_realrealvec(
   const int32_t gid = get_group_id(0) - SPECIAL_GROUPS;
 
   if (gid < 0) {
-    // Process previously skipped block.
     const int32_t v_start_skipped = v_start - 2 * BLOCK_V;
+    const int32_t v_start_final = v_start - BLOCK_V;
+
+    // Process previously skipped block.
     if (v_start_skipped >= 0) {
-      //process_large_product_block_parallel(v_start_skipped,
+      process_large_product_block_parallel(v_start_final, v_start_skipped, 1, x, y, g_prodX, g_prodY);
+      barrier(CLK_LOCAL_MEM_FENCE);
     }
 
     // Process final block.
-    const int32_t v_start_final = v_start - BLOCK_V;
     if (v_start_final >= 0) {
-      finish_block_processing(v_start_final,x,y,g_prodX,g_prodY,deltaE);
+      finish_block_processing(v_start_final, x, y, g_prodX, g_prodY, deltaE);
     }
 
     return;
