@@ -7,6 +7,8 @@
 #include "large_product.h"
 #include "Timer.h"
 
+#define CHECK_RESULT
+
 using std::size_t;
 
 void expect_prod(LargeProduct actual, LargeProduct expected) {
@@ -53,8 +55,8 @@ public:
     }
 
 private:
-    const int32_t BLOCK_H = 1024;
-    const int32_t BLOCK_V = 64;
+    const int32_t BLOCK_H = 512;
+    const int32_t BLOCK_V = 256;
 //    const size_t workgroupSize = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
     //const int32_t ELEMENTS_PER_WORKITEM = MULS_PER_EXPONENT_EXTRACTION * 4;
@@ -187,6 +189,7 @@ private:
         return;
       }
 
+#ifdef CHECK_RESULT
       if (i == 0) {
           expect_prod(prodX,  { -1.36992 , -1310370 });
           expect_prod(prodY, { -1.74623 , -1336159 });
@@ -195,6 +198,7 @@ private:
           expect_prod(prodX,  { 1.32937 , -1221069 });
           expect_prod(prodY,  { 1.90488 , -1424903 });
       }
+#endif
 
     }
 

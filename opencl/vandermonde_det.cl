@@ -103,7 +103,7 @@ void horizontal_reduce(__local int32_t* exponents, __local double* products, int
 
 void finish_block_processing(
     const int32_t v_start,
-    __global const double *x,
+    __global double *x,
     __global const double *y,
     __global struct LargeProduct *g_prodX,
     __global struct LargeProduct *g_prodY
@@ -143,6 +143,8 @@ void finish_block_processing(
         g_prodX[v].exponent = exponent;
       }
 
+      barrier(CLK_LOCAL_MEM_FENCE);
+
       horizontal_reduce(exponents, products, exponentY, prodY);
       if (lid == 0) {
         double prod = g_prodY[v].prod * products[0];
@@ -151,6 +153,9 @@ void finish_block_processing(
         g_prodY[v].exponent = exponent;
       }
 
+      if (g_prodY[v].exponent > g_prodX[v].exponent && false) {
+        x[v] = y[v];
+      }
 
       barrier(CLK_LOCAL_MEM_FENCE);
     }
