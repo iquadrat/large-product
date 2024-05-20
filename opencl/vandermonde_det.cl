@@ -195,8 +195,8 @@ void finish_block_processing(
 
         bool should_move = should_move_particle(v, x[v], y[v], lpX, lpY, deltaE);
         if (should_move) {
-         x[v] = y[v];
-         x_local[v] = y[v];
+          x[v] = y[v];
+          x_local[v] = y[v];
         }
       }
 
@@ -206,12 +206,13 @@ void finish_block_processing(
 
 void process_large_product_block_parallel(
         const int32_t v_start,
-        const int32_t h_startX,
+        const int32_t h_start,
         const int32_t h_blocks,
         __global const double *x,
         __global const double *y,
         __global struct LargeProduct *g_prodX,
-        __global struct LargeProduct *g_prodY
+        __global struct LargeProduct *g_prodY,
+        bool skip
 ) {
   const uint32_t lid = get_local_id(0);
 
@@ -227,9 +228,9 @@ void process_large_product_block_parallel(
   double y_v = y[v];
 
   for(int j = 0; j < h_blocks; ++j) {
-    uint32_t h_start_block = h_startX + j * BLOCK_V;
+    uint32_t h_start_block = h_start + j * BLOCK_V;
 
-    if (h_start_block == v_start || h_start_block == v_start - BLOCK_V) {
+    if (skip && (h_start_block == v_start || h_start_block == v_start - BLOCK_V)) {
       // This block is skipped and processed by separate kernel in the next iteration.
       continue;
     }
@@ -274,9 +275,10 @@ void prod_diff_realrealvec(
 
     // Process previously skipped block.
     if (v_start_skipped >= 0) {
-      process_large_product_block_parallel(v_start_final, v_start_skipped, 1, x, y, g_prodX, g_prodY);
-      barrier(CLK_LOCAL_MEM_FENCE);
+      process_large_product_block_parallel(v_start_final, v_start_skipped, 1, x, y, g_prodX, g_prodY, false);
     }
+    barrier(CLK_LOCAL_MEM_FENCE);
+    barrier(CLK_GLOBAL_MEM_FENCE);
 
     // Process final block.
     if (v_start_final >= 0) {
@@ -288,6 +290,6 @@ void prod_diff_realrealvec(
 
   const int32_t h_start = gid * BLOCK_H;
   const int32_t h_blocks = BLOCK_H / BLOCK_V;
-  process_large_product_block_parallel(v_start, h_start, h_blocks, x, y, g_prodX, g_prodY);
+  process_large_product_block_parallel(v_start, h_start, h_blocks, x, y, g_prodX, g_prodY, true);
 
 }

@@ -88,6 +88,7 @@ public:
 
 
         if (newpos <= 0) {
+          cout << "x[" << k << "] = " << x[k] << "\t" << 0 << endl;
           //cout << "k: " << k << ", skipping due to negative newpos" << newpos << endl;
           skipped += 1;
           continue;
@@ -119,7 +120,7 @@ public:
 
         int i=k;
         cout << "x[" << i << "] = " << x[i] << "\t" << delta_e << endl;
-        //cout << i << "\t" << prodOld << "\t" << prodNew << endl;
+//        cout << i << "\t" << prodOld << "\t" << prodNew << endl;
 
 
         if (k % 1024 == 0) {

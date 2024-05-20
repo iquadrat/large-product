@@ -28,7 +28,7 @@ void VandermondeDetOpenCl::setup() {
   options_stream << " -DBLOCK_V=" << BLOCK_V;
   options_stream << " -DBLOCK_H=" << BLOCK_H;
   options_stream << " -DVECTOR_SIZE=" << N;
-  options_stream << " -DPARAM_A=" << 0.5; // TODO: Pass 'a' to class
+  options_stream << " -DPARAM_A=" << -0.5; // TODO: Pass 'a' to class
   options_stream << " -cl-std=CL2.0 ";
   // options_stream << " -cl-denorms-are-zero -cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros -cl-uniform-work-group-size";
   std::string common_options = options_stream.str();
