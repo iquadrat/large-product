@@ -12,3 +12,5 @@ Makefile
 .idea
 /cmake-build-debug/
 /opencl/build
+/opencl/run_cpu.txt
+/opencl/run_gpu.txt

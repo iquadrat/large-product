@@ -150,6 +150,9 @@ void finish_block_processing(
     x_local[lid] = x[v_start + lid];
     barrier(CLK_LOCAL_MEM_FENCE);*/
 
+    __local int32_t exponents[BLOCK_V / 2];
+    __local double products[BLOCK_V / 2];
+
     for(int v = 0; v < BLOCK_V; v++) {
       double prodX = 1.0;
       double prodY = 1.0;
@@ -159,18 +162,37 @@ void finish_block_processing(
       double x_v = x[v_start + v];
       double y_v = y[v_start + v];
 
-      if (lid == 0) {
-        for(int i = 0; i < BLOCK_V; ++i) {
-          if (i != v) {
-            prodX *= x[v_start + i] - x_v;
-            prodY *= x[v_start + i] - y_v;
-          }
+      if (lid != v) {
+        prodX *= x[v_start + lid] - x_v;
+        prodY *= x[v_start + lid] - y_v;
+        exponentX += normalize_exponent(&prodX);
+        exponentY += normalize_exponent(&prodY);
+      }
 
-          if ((i+1) % MULS_PER_EXPONENT_EXTRACTION == 0) {
-            exponentX += normalize_exponent(&prodX);
-            exponentY += normalize_exponent(&prodY);
-          }
-        }
+      barrier(CLK_LOCAL_MEM_FENCE);
+      barrier(CLK_GLOBAL_MEM_FENCE);
+
+      horizontal_reduce(exponents, products, exponentX, prodX);
+
+      barrier(CLK_LOCAL_MEM_FENCE);
+      barrier(CLK_GLOBAL_MEM_FENCE);
+
+      if (lid == 0) {
+        prodX = products[0];
+        exponentX = exponents[0];
+      }
+
+      barrier(CLK_LOCAL_MEM_FENCE);
+      barrier(CLK_GLOBAL_MEM_FENCE);
+
+      horizontal_reduce(exponents, products, exponentY, prodY);
+
+      barrier(CLK_LOCAL_MEM_FENCE);
+      barrier(CLK_GLOBAL_MEM_FENCE);
+
+      if (lid == 0) {
+        prodY = products[0];
+        exponentY = exponents[0];
 
         exponentX += atomic_mul_normalize(&g_prodX[v_start + v].significand, prodX);
         exponentY += atomic_mul_normalize(&g_prodY[v_start + v].significand, prodY);
@@ -184,6 +206,7 @@ void finish_block_processing(
       }
 
       barrier(CLK_LOCAL_MEM_FENCE);
+      barrier(CLK_GLOBAL_MEM_FENCE);
     }
 }
 
