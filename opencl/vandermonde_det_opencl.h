@@ -7,7 +7,7 @@
 #include "large_product.h"
 #include "Timer.h"
 
-#define CHECK_RESULT
+//#define CHECK_RESULT
 
 using std::size_t;
 
@@ -31,11 +31,12 @@ public:
 
       copyInputBuffers(x, y);
       timer.restart();
+
       for(int32_t b = 0; b < blockVCount + 1; b++) {
         schedule_compute_products(b);
 
-        if ((b * BLOCK_V) % (1 << 16) == BLOCK_V) {
-          print_intermediate_result((b -1) * BLOCK_V);
+        if ((b * BLOCK_V) % (1 << 10) == BLOCK_V) {
+          print_intermediate_result((b - 1) * BLOCK_V);
         }
       }
 

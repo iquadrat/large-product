@@ -156,7 +156,7 @@ public:
 int main() {
   const double dx = 0.5;
   const double a = -0.5;
-  const bool runOnGpu = false;
+  const bool runOnGpu = true;
 
   OpenClConfig config;
   config.platform = 0;

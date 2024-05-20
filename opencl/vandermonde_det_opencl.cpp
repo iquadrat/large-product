@@ -107,10 +107,13 @@ void VandermondeDetOpenCl::schedule_compute_products(int32_t blockVOffset) {
 
 void VandermondeDetOpenCl::print_intermediate_result(int32_t i) {
   queue.finish();
+
   LargeProduct prodX, prodY;
   queue.enqueueReadBuffer(bufferProdX, CL_TRUE, i * sizeof(LargeProduct), sizeof(LargeProduct), &prodX);
   queue.enqueueReadBuffer(bufferProdY, CL_TRUE, i * sizeof(LargeProduct), sizeof(LargeProduct), &prodY);
 
+  prodX.normalize_exponent();
+  prodY.normalize_exponent();
   std::cout << "iteration " << i << " (" << timer.getTimeElapsed() << "s): ";
   std::cout << prodX.prod << " * 2^" << prodX.exponent << "\t / ";
   std::cout << prodY.prod << " * 2^" << prodY.exponent << std::endl;
