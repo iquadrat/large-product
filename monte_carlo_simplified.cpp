@@ -4,6 +4,7 @@
 
 #include "Timer.h"
 #include "vandermonde_det.h"
+#include "opencl/vandermonde_det_opencl.h"
 
 using namespace std;
 
@@ -50,6 +51,7 @@ public:
     }
 
     bool decide_metropolis(const int k, const double delta_e, const double newpos, const double deltapos) {
+      return false;
       if (delta_e >= 0) {
         return true;
       } else {
@@ -62,14 +64,19 @@ public:
       return false;
     }
 
-    void run_iteration_cpu() {
-      Timer timer;
-      timer.start();
-
+    double* apply_random_step(int N, double* x) {
       double* xNew = new_double_array(N);
       for(int i=0; i<N; ++i) {
         xNew[i] = x[i] + random_step();
       }
+      return xNew;
+    }
+
+    void run_iteration_cpu() {
+      Timer timer;
+      timer.start();
+
+      double* xNew = apply_random_step(N, x);
 
       int moved = 0;
       int skipped = 0;
@@ -106,7 +113,7 @@ public:
         }
 
         if (k % 1024 == 0) {
-          cout << k << "\t" << timer.getTimeElapsed() << endl;
+          cout << k << "\t" << timer.getTimeElapsed() << "prodOld = " << prodOld << ", prodNew = " << prodNew << endl ;
         }
       }
 
@@ -126,6 +133,22 @@ public:
       delete[] xNew;
     }
 
+    void run_iteration_gpu(OpenClContext& context) {
+      VandermondeDetOpenCl vandermonde_det_opencl(context);
+
+      Timer timer;
+      timer.start();
+
+      double* xNew = apply_random_step(N, x);
+
+      std::vector<double> x_vec(x, x  + N);
+      std::vector<double> x_vec_new(xNew, xNew + N);
+
+      vandermonde_det_opencl.run(N, x_vec, x_vec_new);
+
+      delete[] xNew;
+    }
+
 
 };
 
@@ -133,10 +156,20 @@ public:
 int main() {
   const double dx = 0.5;
   const double a = -0.5;
+  const bool runOnGpu = false;
+
+  OpenClConfig config;
+  config.platform = 0;
+  config.deviceId = 0;
+
+  OpenClContext context(config);
 
   MonteCarlo monteCarlo(42, dx, a);
-
   for(int iteration = 0; iteration < iterations; iteration += 1) {
-    monteCarlo.run_iteration_cpu();
+    if (runOnGpu) {
+      monteCarlo.run_iteration_gpu(context);
+    } else {
+      monteCarlo.run_iteration_cpu();
+    }
   }
 }
