@@ -21,7 +21,7 @@ typedef union {
     double f64;
 } double_cast;
 
-//#define NORMALIZE_EXPONENT_USING_FREXP
+#define NORMALIZE_EXPONENT_USING_FREXP
 
 int32_t normalize_exponent(double* prod) {
 #ifdef NORMALIZE_EXPONENT_USING_FREXP
@@ -95,7 +95,7 @@ double potential_energy_combi(const double posold, const double posnew) {
     return posold - posnew;
 }
 
-bool should_move_particle(int32_t v, double oldpos, double newpos, struct LargeProduct prodOld, struct LargeProduct prodNew, __global double* deltaE) {
+bool should_move_particle(int32_t v, double oldpos, double newpos, const struct LargeProduct prodOld, const struct LargeProduct prodNew, __global double* deltaE) {
     if (newpos <= 0) {
       deltaE[v] = 0;
       return false;
@@ -171,12 +171,16 @@ void finish_block_processing(
         exponentY = normalize_exponent(&prodY);
       }
 
+      struct LargeProduct lpX;
+      struct LargeProduct lpY;
+
       horizontal_reduce(exponents, products, exponentX, prodX);
       if (lid == 0) {
         double prod = g_prodX[v].significand * products[0];
         double exponent = g_prodX[v].exponent + normalize_exponent(&prod) + exponents[0];
-        g_prodX[v].significand = prod;
-        g_prodX[v].exponent = exponent;
+        lpX.significand = prod;
+        lpX.exponent = exponent;
+        g_prodX[v] = lpX;
       }
 
       barrier(CLK_LOCAL_MEM_FENCE);
@@ -185,13 +189,15 @@ void finish_block_processing(
       if (lid == 0) {
         double prod = g_prodY[v].significand * products[0];
         double exponent =  g_prodY[v].exponent + normalize_exponent(&prod) + exponents[0];
-        g_prodY[v].significand = prod;
-        g_prodY[v].exponent = exponent;
-      }
+        lpY.significand = prod;
+        lpY.exponent = exponent;
+        g_prodY[v] = lpY;
 
-      bool should_move = should_move_particle(v, x[v], y[v], g_prodX[v], g_prodY[v], deltaE);
-      if (should_move) {
+        bool should_move = should_move_particle(v, x[v], y[v], lpX, lpY, deltaE);
+        if (should_move) {
          x[v] = y[v];
+         x_local[v] = y[v];
+        }
       }
 
       barrier(CLK_LOCAL_MEM_FENCE);

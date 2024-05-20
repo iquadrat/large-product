@@ -98,7 +98,10 @@ public:
 
         prod_diff_realrealvec(N, k, newpos, oldpos, x, prodNew, prodOld);
 
-        double division = std::abs(prodNew.significand / prodOld.significand);
+        prodNew.normalize_exponent();
+        prodOld.normalize_exponent();
+
+        const double division = std::abs(prodNew.significand / prodOld.significand);
         double logdivision = log(division) + (prodNew.exponent - prodOld.exponent)*VANDERMONDE_DET_EXPONENT_BASIS_LOG;
         double logfactor = log(newpos / oldpos);
         double delta_e = potential_energy_combi(oldpos, newpos) + a * logfactor + logdivision * 2.0; // factor 2 to square the Vandermonde
@@ -113,6 +116,11 @@ public:
           x[k] = xNew[k];
           moved += 1;
         }
+
+        int i=k;
+        cout << "x[" << i << "] = " << x[i] << "\t" << delta_e << endl;
+        //cout << i << "\t" << prodOld << "\t" << prodNew << endl;
+
 
         if (k % 1024 == 0) {
           cout << k << "\t" << timer.getTimeElapsed() << "prodOld = " << prodOld << ", prodNew = " << prodNew << endl ;
@@ -155,10 +163,18 @@ public:
 };
 
 
-int main() {
+int main(int argc, char** argv) {
   const double dx = 0.5;
   const double a = -0.5;
-  const bool runOnGpu = false;
+  bool runOnGpu = true;
+
+  if(argc > 1){
+    try {
+      runOnGpu = std::stoi(argv[1]);
+    } catch(const std::invalid_argument& e) {
+      std::cerr << "Invalid argument for 'runOnGpu'. Expected 0 or 1. Defaulting to 1.\n";
+    }
+  }
 
   OpenClConfig config;
   config.platform = 0;

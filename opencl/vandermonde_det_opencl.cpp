@@ -143,6 +143,11 @@ void VandermondeDetOpenCl::print_result(const vector<double>& xOld) {
   std::cout << "N= " << N << std::endl;
   std::cout << "Total time: " << timer.getTimeElapsed() << std::endl;
 
+  std::vector<LargeProduct> prodX(N);
+  std::vector<LargeProduct> prodY(N);
+  queue.enqueueReadBuffer(bufferProdX, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodX[0]);
+  queue.enqueueReadBuffer(bufferProdY, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodY[0]);
+
   std::vector<double> x(N);
   queue.enqueueReadBuffer(bufferX, CL_TRUE, 0, sizeof(double) * N, &x[0]);
 
@@ -156,9 +161,11 @@ void VandermondeDetOpenCl::print_result(const vector<double>& xOld) {
     if (x[i] != xOld[i]) {
       moved += 1;
     }
-    if (i > 100 && i< (N-100)) {
-      continue;
-    }
+//    if (i > 100 && i< (N-100)) {
+//      continue;
+//    }
+//    std::cout << i << ":\t" << prodX[i].significand << " * 2^" << prodX[i].exponent;
+//    std::cout << "\t / " << prodY[i].significand << " * 2^" << prodY[i].exponent << std::endl;
     cout << "x[" << i << "] = " << x[i] << "\t" << deltaE[i] << endl;
   }
 

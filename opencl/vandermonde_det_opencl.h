@@ -35,7 +35,7 @@ public:
       for(int32_t b = 0; b < blockVCount + 1; b++) {
         schedule_compute_products(b);
 
-        if ((b * BLOCK_V) % (1 << 10) == BLOCK_V) {
+        if ((b * BLOCK_V) % (1 << 16) == BLOCK_V) {
           print_intermediate_result((b - 1) * BLOCK_V);
         }
       }
