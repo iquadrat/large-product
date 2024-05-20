@@ -107,7 +107,8 @@ void VandermondeDetOpenCl::schedule_compute_products(int32_t blockVOffset) {
   kernel_prod_diff_realrealvec.setArg(2, bufferY);
   kernel_prod_diff_realrealvec.setArg(3, bufferProdX);
   kernel_prod_diff_realrealvec.setArg(4, bufferProdY);
-  kernel_prod_diff_realrealvec.setArg(5, bufferDeltaE);
+  kernel_prod_diff_realrealvec.setArg(5, bufferURandom);
+  kernel_prod_diff_realrealvec.setArg(6, bufferDeltaE);
 
   int32_t elements = (1 + (N / BLOCK_H)) * BLOCK_V;
   if (blockVOffset == blockVCount) {

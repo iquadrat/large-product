@@ -21,7 +21,7 @@ typedef union {
     double f64;
 } double_cast;
 
-#define NORMALIZE_EXPONENT_USING_FREXP
+//#define NORMALIZE_EXPONENT_USING_FREXP
 
 int32_t normalize_exponent(double* prod) {
 #ifdef NORMALIZE_EXPONENT_USING_FREXP
@@ -77,15 +77,14 @@ int32_t atomic_mul_normalize(volatile __global double *source, const double mul)
 #define SPECIAL_GROUPS 1
 
 
-bool decide_metropolis(const double delta_e, const double newpos, const double deltapos) {
+bool decide_metropolis(const double delta_e, const double newpos, const double deltapos, double r) {
   if (delta_e >= 0) {
     return true;
   } else {
     // Boltzmann weight: exp(delta_e), delta_e is negative if the new position has higher energy
-//        double r = distu(random);
-//        if (r<exp(delta_e)) {
-//          return true;
-//        }
+    if (r<exp(delta_e)) {
+      return true;
+    }
   }
   return false;
 }
@@ -95,7 +94,15 @@ double potential_energy_combi(const double posold, const double posnew) {
     return posold - posnew;
 }
 
-bool should_move_particle(int32_t v, double oldpos, double newpos, const struct LargeProduct prodOld, const struct LargeProduct prodNew, __global double* deltaE) {
+bool should_move_particle(
+    int32_t v,
+    double oldpos,
+    double newpos,
+    const struct LargeProduct prodOld,
+    const struct LargeProduct prodNew,
+    double r,
+    __global double* deltaE
+) {
     if (newpos <= 0) {
       deltaE[v] = 0;
       return false;
@@ -106,7 +113,7 @@ bool should_move_particle(int32_t v, double oldpos, double newpos, const struct 
     double logfactor = log(newpos / oldpos);
     double delta_e = potential_energy_combi(oldpos, newpos) + PARAM_A * logfactor + logdivision * 2.0; // factor 2 to square the Vandermonde
     deltaE[v] = delta_e;
-    return decide_metropolis(delta_e, newpos, newpos - oldpos);
+    return decide_metropolis(delta_e, newpos, newpos - oldpos, r);
 }
 
 void horizontal_reduce(__local int32_t* exponents, __local double* products, int32_t exponent, double product) {
@@ -142,6 +149,7 @@ void finish_block_processing(
     __global const double *y,
     __global struct LargeProduct *g_prodX,
     __global struct LargeProduct *g_prodY,
+    __global const double *uRandom,
     __global double* deltaE
 ) {
     const uint32_t lid = get_local_id(0);
@@ -193,7 +201,7 @@ void finish_block_processing(
         lpY.exponent = exponent;
         g_prodY[v] = lpY;
 
-        bool should_move = should_move_particle(v, x[v], y[v], lpX, lpY, deltaE);
+        bool should_move = should_move_particle(v, x[v], y[v], lpX, lpY, uRandom[v], deltaE);
         if (should_move) {
           x[v] = y[v];
           x_local[v_i] = y[v];
@@ -264,6 +272,7 @@ void prod_diff_realrealvec(
         __global const double *y,
         __global struct LargeProduct *g_prodX,
         __global struct LargeProduct *g_prodY,
+        __global const double *uRandom,
         __global double* deltaE
 ) {
   const uint32_t lid = get_local_id(0);
@@ -282,7 +291,7 @@ void prod_diff_realrealvec(
 
     // Process final block.
     if (v_start_final >= 0) {
-      finish_block_processing(v_start_final, x, y, g_prodX, g_prodY, deltaE);
+      finish_block_processing(v_start_final, x, y, g_prodX, g_prodY, uRandom, deltaE);
     }
 
     return;
