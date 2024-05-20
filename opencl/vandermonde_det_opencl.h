@@ -21,10 +21,10 @@ public:
     void run(int32_t N, const std::vector<double>& x, const std::vector<double>& y) {
       this->N = N;
       this->blockHCount = (N + BLOCK_H - 1)  / BLOCK_H;
+      this->blockVCount = (N + BLOCK_V - 1) / BLOCK_V;
       setup();
 
       std::cout << "blockHCount = " << blockHCount << std::endl;
-      this->blockVCount = (N + BLOCK_V - 1) / BLOCK_V;
 
 //      copyInputBuffers(x, y);
 //      benchmark_iteration();
@@ -43,7 +43,7 @@ public:
       queue.finish();
       timer.stopAndAddTime();
 
-      print_result();
+      print_result(x);
     }
 
 private:
@@ -61,6 +61,7 @@ private:
     cl::Buffer bufferY;
     cl::Buffer bufferProdX;
     cl::Buffer bufferProdY;
+    cl::Buffer bufferDeltaE;
 
     cl::Program program;
     cl::Kernel kernel_prod_diff_realrealvec;
@@ -82,7 +83,7 @@ private:
 
     void print_intermediate_result(int32_t i);
 
-    void print_result();
+    void print_result(const std::vector<double>& xOld);
 
 };
 

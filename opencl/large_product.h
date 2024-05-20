@@ -9,14 +9,14 @@
 #endif // __OPENCL_VERSION__
 
 struct LargeProduct {
-    double prod;
+    double significand;
     int exponent;
 
 #ifndef __OPENCL_VERSION__
     void normalize_exponent() {
       int delta_exponent;
-      double mantissa = frexp(prod, &delta_exponent);
-      prod = ldexp(mantissa, 0);
+      double mantissa = frexp(significand, &delta_exponent);
+      significand = ldexp(mantissa, 0);
       exponent += delta_exponent;
     }
 #endif // __OPENCL_VERSION__

@@ -9,6 +9,8 @@ typedef long   int64_t;
 
 #define ATOMIC_GLOBAL_UPDATE
 
+#define VANDERMONDE_DET_EXPONENT_BASIS_LOG (log(2.0))
+
 const uint64_t EXPONENT_MASK = 0x7ff0000000000000ULL;
 const uint64_t EXPONENT_RESET_MASK = 0x3ff0000000000000ULL;
 const int32_t EXPONENT_BIAS = 1023;
@@ -41,14 +43,14 @@ __kernel void prod_divide(
   __global struct LargeProduct* g_prod1 = &g_prod1_array[gid];
   __global struct LargeProduct* g_prod2 = &g_prod2_array[gid];
 
-  double prod = g_prod1->prod / g_prod2->prod;
+  double prod = g_prod1->significand / g_prod2->significand;
   int32_t exponent = g_prod1->exponent - g_prod2->exponent;
   exponent += normalize_exponent(&prod);
 
-  g_prod1->prod = prod;
+  g_prod1->significand = prod;
   g_prod1->exponent = exponent;
 
-  g_prod2->prod = 1.0;
+  g_prod2->significand = 1.0;
   g_prod2->exponent = 0;
 }
 
@@ -73,6 +75,39 @@ int32_t atomic_mul_normalize(volatile __global double *source, const double mul)
 }
 
 #define SPECIAL_GROUPS 1
+
+
+bool decide_metropolis(const double delta_e, const double newpos, const double deltapos) {
+  if (delta_e >= 0) {
+    return true;
+  } else {
+    // Boltzmann weight: exp(delta_e), delta_e is negative if the new position has higher energy
+//        double r = distu(random);
+//        if (r<exp(delta_e)) {
+//          return true;
+//        }
+  }
+  return false;
+}
+
+double potential_energy_combi(const double posold, const double posnew) {
+    // gives deltaE = -N (V(posnew)-V(posold))
+    return posold - posnew;
+}
+
+bool should_move_particle(int32_t v, double oldpos, double newpos, struct LargeProduct prodOld, struct LargeProduct prodNew, __global double* deltaE) {
+    if (newpos <= 0) {
+      deltaE[v] = 0;
+      return false;
+    }
+
+    double division = fabs(prodNew.significand / prodOld.significand);
+    double logdivision = log(division) + (prodNew.exponent - prodOld.exponent) * VANDERMONDE_DET_EXPONENT_BASIS_LOG;
+    double logfactor = log(newpos / oldpos);
+    double delta_e = potential_energy_combi(oldpos, newpos) + PARAM_A * logfactor + logdivision * 2.0; // factor 2 to square the Vandermonde
+    deltaE[v] = delta_e;
+    return decide_metropolis(delta_e, newpos, newpos - oldpos);
+}
 
 void horizontal_reduce(__local int32_t* exponents, __local double* products, int32_t exponent, double product) {
   const uint32_t lid = get_local_id(0);
@@ -106,7 +141,8 @@ void finish_block_processing(
     __global double *x,
     __global const double *y,
     __global struct LargeProduct *g_prodX,
-    __global struct LargeProduct *g_prodY
+    __global struct LargeProduct *g_prodY,
+    __global double* deltaE
 ) {
     const uint32_t lid = get_local_id(0);
 
@@ -137,9 +173,9 @@ void finish_block_processing(
 
       horizontal_reduce(exponents, products, exponentX, prodX);
       if (lid == 0) {
-        double prod = g_prodX[v].prod * products[0];
+        double prod = g_prodX[v].significand * products[0];
         double exponent = g_prodX[v].exponent + normalize_exponent(&prod) + exponents[0];
-        g_prodX[v].prod = prod;
+        g_prodX[v].significand = prod;
         g_prodX[v].exponent = exponent;
       }
 
@@ -147,14 +183,15 @@ void finish_block_processing(
 
       horizontal_reduce(exponents, products, exponentY, prodY);
       if (lid == 0) {
-        double prod = g_prodY[v].prod * products[0];
+        double prod = g_prodY[v].significand * products[0];
         double exponent =  g_prodY[v].exponent + normalize_exponent(&prod) + exponents[0];
-        g_prodY[v].prod = prod;
+        g_prodY[v].significand = prod;
         g_prodY[v].exponent = exponent;
       }
 
-      if (g_prodY[v].exponent > g_prodX[v].exponent && false) {
-        x[v] = y[v];
+      bool should_move = should_move_particle(v, x[v], y[v], g_prodX[v], g_prodY[v], deltaE);
+      if (should_move) {
+         x[v] = y[v];
       }
 
       barrier(CLK_LOCAL_MEM_FENCE);
@@ -165,10 +202,11 @@ __kernel
 __attribute__((reqd_work_group_size(BLOCK_V, 1, 1)))
 void prod_diff_realrealvec(
         const int32_t v_start,
-        __global const double *x,
+        __global double *x,
         __global const double *y,
         __global struct LargeProduct *g_prodX,
-        __global struct LargeProduct *g_prodY
+        __global struct LargeProduct *g_prodY,
+        __global double* deltaE
 ) {
   const uint32_t lid = get_local_id(0);
   const int32_t gid = get_group_id(0) - SPECIAL_GROUPS;
@@ -180,7 +218,7 @@ void prod_diff_realrealvec(
     if (v_start_previous < 0) {
       return;
     }
-    finish_block_processing(v_start_previous,x,y,g_prodX,g_prodY);
+    finish_block_processing(v_start_previous,x,y,g_prodX,g_prodY,deltaE);
 
     return;
   }
@@ -224,8 +262,8 @@ void prod_diff_realrealvec(
     barrier(CLK_LOCAL_MEM_FENCE);
   }
 
-  exponentX += atomic_mul_normalize(&g_prodX[v].prod, prodX);
-  exponentY += atomic_mul_normalize(&g_prodY[v].prod, prodY);
+  exponentX += atomic_mul_normalize(&g_prodX[v].significand, prodX);
+  exponentY += atomic_mul_normalize(&g_prodY[v].significand, prodY);
   atomic_add(&g_prodX[v].exponent, exponentX);
   atomic_add(&g_prodY[v].exponent, exponentY);
 }

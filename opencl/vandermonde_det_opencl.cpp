@@ -1,8 +1,9 @@
 #include "vandermonde_det_opencl.h"
 
+using namespace std;
 
 void expect_prod(LargeProduct actual, LargeProduct expected) {
-  if ((actual.exponent == expected.exponent) && (abs(actual.prod - expected.prod) < 1e-5)) {
+  if ((actual.exponent == expected.exponent) && (abs(actual.significand - expected.significand) < 1e-5)) {
     std::cout << "Result matches expectation :-)" << std::endl;
   } else {
     std::cerr << "Invalid result!" << std::endl;
@@ -16,6 +17,7 @@ void VandermondeDetOpenCl::setup() {
   bufferY = context.createBuffer("y", sizeof(double) * blockHCount * BLOCK_H, CL_MEM_READ_ONLY);
   bufferProdX = context.createBuffer("prodX", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
   bufferProdY = context.createBuffer("prodY", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
+  bufferDeltaE = context.createBuffer("deltaE", sizeof(double) * blockVCount * BLOCK_V, CL_MEM_READ_WRITE);
 
   std::vector<std::string> files;
   files.push_back("large_product.h");
@@ -26,6 +28,7 @@ void VandermondeDetOpenCl::setup() {
   options_stream << " -DBLOCK_V=" << BLOCK_V;
   options_stream << " -DBLOCK_H=" << BLOCK_H;
   options_stream << " -DVECTOR_SIZE=" << N;
+  options_stream << " -DPARAM_A=" << 0.5; // TODO: Pass 'a' to class
   options_stream << " -cl-std=CL2.0 ";
   // options_stream << " -cl-denorms-are-zero -cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros -cl-uniform-work-group-size";
   std::string common_options = options_stream.str();
@@ -94,6 +97,7 @@ void VandermondeDetOpenCl::schedule_compute_products(int32_t blockVOffset) {
   kernel_prod_diff_realrealvec.setArg(2, bufferY);
   kernel_prod_diff_realrealvec.setArg(3, bufferProdX);
   kernel_prod_diff_realrealvec.setArg(4, bufferProdY);
+  kernel_prod_diff_realrealvec.setArg(5, bufferDeltaE);
 
   int32_t elements = (1 + (N / BLOCK_H)) * BLOCK_V;
   if (blockVOffset == blockVCount) {
@@ -115,8 +119,8 @@ void VandermondeDetOpenCl::print_intermediate_result(int32_t i) {
   prodX.normalize_exponent();
   prodY.normalize_exponent();
   std::cout << "iteration " << i << " (" << timer.getTimeElapsed() << "s): ";
-  std::cout << prodX.prod << " * 2^" << prodX.exponent << "\t / ";
-  std::cout << prodY.prod << " * 2^" << prodY.exponent << std::endl;
+  std::cout << prodX.significand << " * 2^" << prodX.exponent << "\t / ";
+  std::cout << prodY.significand << " * 2^" << prodY.exponent << std::endl;
 
   if (N != 1024*1024) {
     return;
@@ -135,22 +139,32 @@ void VandermondeDetOpenCl::print_intermediate_result(int32_t i) {
 
 }
 
-void VandermondeDetOpenCl::print_result() {
+void VandermondeDetOpenCl::print_result(const vector<double>& xOld) {
   std::cout << "N= " << N << std::endl;
   std::cout << "Total time: " << timer.getTimeElapsed() << std::endl;
 
-  std::vector<LargeProduct> prodX(N);
-  std::vector<LargeProduct> prodY(N);
-  queue.enqueueReadBuffer(bufferProdX, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodX[0]);
-  queue.enqueueReadBuffer(bufferProdY, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodY[0]);
+  std::vector<double> x(N);
+  queue.enqueueReadBuffer(bufferX, CL_TRUE, 0, sizeof(double) * N, &x[0]);
 
+  std::vector<double> deltaE(N);
+  queue.enqueueReadBuffer(bufferDeltaE, CL_TRUE, 0, sizeof(double) * N, &deltaE[0]);
+
+  double checksum = 0;
+  int moved = 0;
   for(int i=0; i<N; ++i) {
+    checksum += x[i];
+    if (x[i] != xOld[i]) {
+      moved += 1;
+    }
     if (i > 100 && i< (N-100)) {
       continue;
     }
-    std::cout << i << ":\t" << prodX[i].prod << " * 2^" << prodX[i].exponent;
-    std::cout << "\t / " << prodY[i].prod << " * 2^" << prodY[i].exponent << std::endl;
+    cout << "x[" << i << "] = " << x[i] << "\t" << deltaE[i] << endl;
   }
+
+  cout << "checksum = " << checksum << endl;
+  cout << "moved = " << moved << endl;
+
 
   double bytesRead = 1.0 * sizeof(double) * 2 * (N / BLOCK_V) * (N / BLOCK_H) * (BLOCK_H + BLOCK_V);
   double flops =(1.0 * N * N) * 2 * 2; /* 2 ops per vector element */

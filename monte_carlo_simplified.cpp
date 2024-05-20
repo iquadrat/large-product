@@ -51,7 +51,6 @@ public:
     }
 
     bool decide_metropolis(const int k, const double delta_e, const double newpos, const double deltapos) {
-      return false;
       if (delta_e >= 0) {
         return true;
       } else {
@@ -81,12 +80,14 @@ public:
       int moved = 0;
       int skipped = 0;
 
+      vector<double> deltaE(N);
+
       for(int k = 0; k< N; k += 1) {
         const double oldpos = x[k];
         const double newpos = xNew[k];
 
 
-        if (newpos < 0) {
+        if (newpos <= 0) {
           //cout << "k: " << k << ", skipping due to negative newpos" << newpos << endl;
           skipped += 1;
           continue;
@@ -102,6 +103,7 @@ public:
         double logfactor = log(newpos / oldpos);
         double delta_e = potential_energy_combi(oldpos, newpos) + a * logfactor + logdivision * 2.0; // factor 2 to square the Vandermonde
         assert(!isnan(delta_e));
+        deltaE[k] = delta_e;
         bool should_move_particle = decide_metropolis(k, delta_e, newpos, newpos - oldpos);
 
 //        cout << "oldpos " << oldpos<< "newpos " << newpos <<",divison " << division << ", logdivison " << logdivision << ", logfactor" << logfactor <<endl;
@@ -120,7 +122,7 @@ public:
       double checksum = 0;
       for (int i=0; i<N ; i++) {
         if (i<100 || i> N-100) {
-          cout << "x[" << i << "] = " << x[i] << endl;
+          cout << "x[" << i << "] = " << x[i] << "\t" << deltaE[i] << endl;
         }
         checksum += x[i];
       }
@@ -156,7 +158,7 @@ public:
 int main() {
   const double dx = 0.5;
   const double a = -0.5;
-  const bool runOnGpu = true;
+  const bool runOnGpu = false;
 
   OpenClConfig config;
   config.platform = 0;
