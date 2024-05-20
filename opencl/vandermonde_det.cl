@@ -204,30 +204,16 @@ void finish_block_processing(
     }
 }
 
-__kernel
-__attribute__((reqd_work_group_size(BLOCK_V, 1, 1)))
-void prod_diff_realrealvec(
+void process_large_product_block_parallel(
         const int32_t v_start,
-        __global double *x,
+        const int32_t group,
+        __global const double *x,
         __global const double *y,
         __global struct LargeProduct *g_prodX,
-        __global struct LargeProduct *g_prodY,
-        __global double* deltaE
+        __global struct LargeProduct *g_prodY
 ) {
   const uint32_t lid = get_local_id(0);
-  const int32_t gid = get_group_id(0) - SPECIAL_GROUPS;
-
-  if (gid < 0) {
-    // Process elements of previously skipped block.
-    const int32_t v_start_previous = v_start - BLOCK_V;
-
-    if (v_start_previous < 0) {
-      return;
-    }
-    finish_block_processing(v_start_previous,x,y,g_prodX,g_prodY,deltaE);
-
-    return;
-  }
+  const int32_t gid = group;
 
   __local double x_r[BLOCK_V];
 
@@ -272,4 +258,32 @@ void prod_diff_realrealvec(
   exponentY += atomic_mul_normalize(&g_prodY[v].significand, prodY);
   atomic_add(&g_prodX[v].exponent, exponentX);
   atomic_add(&g_prodY[v].exponent, exponentY);
+}
+
+__kernel
+__attribute__((reqd_work_group_size(BLOCK_V, 1, 1)))
+void prod_diff_realrealvec(
+        const int32_t v_start,
+        __global double *x,
+        __global const double *y,
+        __global struct LargeProduct *g_prodX,
+        __global struct LargeProduct *g_prodY,
+        __global double* deltaE
+) {
+  const uint32_t lid = get_local_id(0);
+  const int32_t gid = get_group_id(0) - SPECIAL_GROUPS;
+
+  if (gid < 0) {
+    // Process elements of previously skipped block.
+    const int32_t v_start_previous = v_start - BLOCK_V;
+
+    if (v_start_previous >= 0) {
+      finish_block_processing(v_start_previous,x,y,g_prodX,g_prodY,deltaE);
+    }
+
+    return;
+  }
+
+  process_large_product_block_parallel(v_start, gid, x, y, g_prodX, g_prodY);
+
 }
