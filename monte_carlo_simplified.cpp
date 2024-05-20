@@ -62,7 +62,7 @@ public:
       return false;
     }
 
-    void run_iteration() {
+    void run_iteration_cpu() {
       Timer timer;
       timer.start();
 
@@ -137,6 +137,6 @@ int main() {
   MonteCarlo monteCarlo(42, dx, a);
 
   for(int iteration = 0; iteration < iterations; iteration += 1) {
-    monteCarlo.run_iteration();
+    monteCarlo.run_iteration_cpu();
   }
 }
