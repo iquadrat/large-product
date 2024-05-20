@@ -206,14 +206,14 @@ void finish_block_processing(
 
 void process_large_product_block_parallel(
         const int32_t v_start,
-        const int32_t group,
+        const int32_t h_startX,
+        const int32_t h_blocks,
         __global const double *x,
         __global const double *y,
         __global struct LargeProduct *g_prodX,
         __global struct LargeProduct *g_prodY
 ) {
   const uint32_t lid = get_local_id(0);
-  const int32_t gid = group;
 
   __local double x_r[BLOCK_V];
 
@@ -226,23 +226,18 @@ void process_large_product_block_parallel(
   double x_v = x[v];
   double y_v = y[v];
 
-  for(int j = 0; j < BLOCK_H / BLOCK_V; ++j) {
+  for(int j = 0; j < h_blocks; ++j) {
+    uint32_t h_start_block = h_startX + j * BLOCK_V;
 
-    uint32_t h_start = gid * BLOCK_H + j * BLOCK_V;
-
-    if (h_start == v_start) {
+    if (h_start_block == v_start) {
       // This block is skipped and processed by separate kernel in the next iteration.
       continue;
     }
 
-    x_r[lid] = x[h_start + lid];
+    x_r[lid] = x[h_start_block + lid];
     barrier(CLK_LOCAL_MEM_FENCE);
 
     for(int i = 0; i < BLOCK_V; ++i) {
-//      if (h_start + i != v) {
-//        continue;
-//      }
-
       prodX *= x_r[i] - x_v;
       prodY *= x_r[i] - y_v;
 
@@ -274,16 +269,23 @@ void prod_diff_realrealvec(
   const int32_t gid = get_group_id(0) - SPECIAL_GROUPS;
 
   if (gid < 0) {
-    // Process elements of previously skipped block.
-    const int32_t v_start_previous = v_start - BLOCK_V;
+    // Process previously skipped block.
+    const int32_t v_start_skipped = v_start - 2 * BLOCK_V;
+    if (v_start_skipped >= 0) {
+      //process_large_product_block_parallel(v_start_skipped,
+    }
 
-    if (v_start_previous >= 0) {
-      finish_block_processing(v_start_previous,x,y,g_prodX,g_prodY,deltaE);
+    // Process final block.
+    const int32_t v_start_final = v_start - BLOCK_V;
+    if (v_start_final >= 0) {
+      finish_block_processing(v_start_final,x,y,g_prodX,g_prodY,deltaE);
     }
 
     return;
   }
 
-  process_large_product_block_parallel(v_start, gid, x, y, g_prodX, g_prodY);
+  const int32_t h_start = gid * BLOCK_H;
+  const int32_t h_blocks = BLOCK_H / BLOCK_V;
+  process_large_product_block_parallel(v_start, h_start, h_blocks, x, y, g_prodX, g_prodY);
 
 }
