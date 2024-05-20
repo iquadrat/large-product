@@ -135,15 +135,18 @@ void finish_block_processing(
 
       horizontal_reduce(exponents, products, exponentX, prodX);
       if (lid == 0) {
-        exponentX = atomic_mul_normalize(&g_prodX[v_start + v].prod, products[0]);
-        atomic_add(&g_prodX[v_start + v].exponent, exponentX + exponents[0]);
+        double prod = g_prodX[v_start + v].prod * products[0];
+        double exponent = g_prodX[v_start + v].exponent + normalize_exponent(&prod) + exponents[0];
+        g_prodX[v_start + v].prod = prod;
+        g_prodX[v_start + v].exponent = exponent;
       }
 
       horizontal_reduce(exponents, products, exponentY, prodY);
-
       if (lid == 0) {
-        exponentY = atomic_mul_normalize(&g_prodY[v_start + v].prod, products[0]);
-        atomic_add(&g_prodY[v_start + v].exponent, exponentY+ exponents[0]);
+        double prod = g_prodY[v_start + v].prod * products[0];
+        double exponent =  g_prodY[v_start + v].exponent + normalize_exponent(&prod) + exponents[0];
+        g_prodY[v_start + v].prod = prod;
+        g_prodY[v_start + v].exponent = exponent;
       }
       barrier(CLK_LOCAL_MEM_FENCE);
     }
