@@ -12,12 +12,20 @@ void expect_prod(LargeProduct actual, LargeProduct expected) {
 }
 
 void VandermondeDetOpenCl::setup() {
-  std::cout << "sizeof(LargeProduct) = " << sizeof(LargeProduct) << std::endl;
-  bufferX = context.createBuffer("x", sizeof(double) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
-  bufferY = context.createBuffer("y", sizeof(double) * blockHCount * BLOCK_H, CL_MEM_READ_ONLY);
-  bufferProdX = context.createBuffer("prodX", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
-  bufferProdY = context.createBuffer("prodY", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
-  bufferDeltaE = context.createBuffer("deltaE", sizeof(double) * blockVCount * BLOCK_V, CL_MEM_READ_WRITE);
+  if (isSetup) {
+    return;
+  }
+  isSetup = true;
+
+  this->blockHCount = (N + BLOCK_H - 1)  / BLOCK_H;
+  this->blockVCount = (N + BLOCK_V - 1) / BLOCK_V;
+
+  //std::cout << "sizeof(LargeProduct) = " << sizeof(LargeProduct) << std::endl;
+  bufferX = context->createBuffer("x", sizeof(double) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
+  bufferY = context->createBuffer("y", sizeof(double) * blockHCount * BLOCK_H, CL_MEM_READ_ONLY);
+  bufferProdX = context->createBuffer("prodX", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
+  bufferProdY = context->createBuffer("prodY", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
+  bufferDeltaE = context->createBuffer("deltaE", sizeof(double) * blockVCount * BLOCK_V, CL_MEM_READ_WRITE);
 
   std::vector<std::string> files;
   files.push_back("large_product.h");
@@ -33,17 +41,17 @@ void VandermondeDetOpenCl::setup() {
   // options_stream << " -cl-denorms-are-zero -cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros -cl-uniform-work-group-size";
   std::string common_options = options_stream.str();
 
-  program = context.createProgram("vandermonde", files, common_options);
-  kernel_prod_diff_realrealvec = context.createKernel(program, "prod_diff_realrealvec");
+  program = context->createProgram("vandermonde", files, common_options);
+  kernel_prod_diff_realrealvec = context->createKernel(program, "prod_diff_realrealvec");
 
-  queue = context.createQueue();
+  queue = context->createQueue();
 }
 
-void VandermondeDetOpenCl::copyInputBuffers(const std::vector<double>& x, const std::vector<double>& y) {
+void VandermondeDetOpenCl::copyInputBuffers(const double* x, const double* y) {
   std::cout << "Copy input buffers to device.." << std::endl;
   std::vector<LargeProduct> prod_init(N, { 1.0, 0 });
-  queue.enqueueWriteBuffer(bufferX, true, 0, sizeof(double) * N, &x[0]);
-  queue.enqueueWriteBuffer(bufferY, true, 0, sizeof(double) * N, &y[0]);
+  queue.enqueueWriteBuffer(bufferX, true, 0, sizeof(double) * N, x);
+  queue.enqueueWriteBuffer(bufferY, true, 0, sizeof(double) * N, y);
   queue.enqueueWriteBuffer(bufferProdX, true, 0, sizeof(LargeProduct) * N, &prod_init[0]);
   queue.enqueueWriteBuffer(bufferProdY, true, 0, sizeof(LargeProduct) * N, &prod_init[0]);
 }
@@ -106,7 +114,7 @@ void VandermondeDetOpenCl::schedule_compute_products(int32_t blockVOffset) {
 
   cl_int err = queue.enqueueNDRangeKernel(
           kernel_prod_diff_realrealvec, cl::NullRange, cl::NDRange(elements), cl::NDRange(BLOCK_V), nullptr, nullptr);
-  context.checkErr(err, "kernel");
+  context->checkErr(err, "kernel");
 }
 
 void VandermondeDetOpenCl::print_intermediate_result(int32_t i) {
@@ -139,28 +147,27 @@ void VandermondeDetOpenCl::print_intermediate_result(int32_t i) {
 
 }
 
-void VandermondeDetOpenCl::print_result(const vector<double>& xOld) {
+void VandermondeDetOpenCl::fetch_result(double* x) {
   std::cout << "N= " << N << std::endl;
   std::cout << "Total time: " << timer.getTimeElapsed() << std::endl;
 
-  std::vector<LargeProduct> prodX(N);
-  std::vector<LargeProduct> prodY(N);
-  queue.enqueueReadBuffer(bufferProdX, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodX[0]);
-  queue.enqueueReadBuffer(bufferProdY, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodY[0]);
+//  std::vector<LargeProduct> prodX(N);
+//  std::vector<LargeProduct> prodY(N);
+//  queue.enqueueReadBuffer(bufferProdX, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodX[0]);
+//  queue.enqueueReadBuffer(bufferProdY, CL_TRUE, 0, sizeof(LargeProduct) * N, &prodY[0]);
 
-  std::vector<double> x(N);
-  queue.enqueueReadBuffer(bufferX, CL_TRUE, 0, sizeof(double) * N, &x[0]);
+  std::vector<double> xNew(N);
+  queue.enqueueReadBuffer(bufferX, CL_TRUE, 0, sizeof(double) * N, &xNew[0]);
 
-  std::vector<double> deltaE(N);
-  queue.enqueueReadBuffer(bufferDeltaE, CL_TRUE, 0, sizeof(double) * N, &deltaE[0]);
+//  std::vector<double> deltaE(N);
+//  queue.enqueueReadBuffer(bufferDeltaE, CL_TRUE, 0, sizeof(double) * N, &deltaE[0]);
 
-  double checksum = 0;
   int moved = 0;
   for(int i=0; i<N; ++i) {
-    checksum += x[i];
-    if (x[i] != xOld[i]) {
+    if (x[i] != xNew[i]) {
       moved += 1;
     }
+    x[i] = xNew[i];
     if (i > 100 && i< (N-100)) {
       continue;
     }
@@ -169,9 +176,7 @@ void VandermondeDetOpenCl::print_result(const vector<double>& xOld) {
 //    cout << "x[" << i << "] = " << x[i] << "\t" << deltaE[i] << endl;
   }
 
-  cout << "checksum = " << checksum << endl;
   cout << "moved = " << moved << endl;
-
 
   double bytesRead = 1.0 * sizeof(double) * 2 * (N / BLOCK_V) * (N / BLOCK_H) * (BLOCK_H + BLOCK_V);
   double flops =(1.0 * N * N) * 2 * 2; /* 2 ops per vector element */

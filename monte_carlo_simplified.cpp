@@ -8,9 +8,6 @@
 
 using namespace std;
 
-constexpr const int N = 1024 * 1024;
-constexpr const int iterations = 1;
-
 // fills array x with random values in (a,b)
 void init_random_positions(std::mt19937_64& gen, const long int N, const double a, const double b, double * x) {
   std::uniform_real_distribution<double> distu(0.0, 1.0);
@@ -19,21 +16,35 @@ void init_random_positions(std::mt19937_64& gen, const long int N, const double 
   }
 }
 
+enum class RunMode {
+    CPU,
+    GPU,
+};
+
 class MonteCarlo {
+    int32_t N;
     std::uniform_real_distribution<double> distu;
+    std::unique_ptr<VandermondeDetOpenCl> vandermonde_det_opencl;
     std::mt19937_64 random;
     double avgstepsize;
     double a;
     double* x;
+    Timer timer;
 
 public:
-    MonteCarlo(int seed, double avgstepsize, double a):
+    MonteCarlo(int N, int seed, double avgstepsize, double a, std::unique_ptr<OpenClContext> context):
+      N(N),
       distu(0.0, 1.0),
+      vandermonde_det_opencl(context == nullptr ? nullptr: new VandermondeDetOpenCl(std::move(context), N)),
       random(seed),
       avgstepsize(avgstepsize),
-      a(a) {
+      a(a)
+    {
       x = new_double_array(N);
       init_random_positions(random, N,0,1, x);
+      if (vandermonde_det_opencl != nullptr) {
+        vandermonde_det_opencl->setup();
+      }
     }
 
     ~MonteCarlo() {
@@ -71,12 +82,7 @@ public:
       return xNew;
     }
 
-    void run_iteration_cpu() {
-      Timer timer;
-      timer.start();
-
-      double* xNew = apply_random_step(N, x);
-
+    void run_iteration_cpu(const double* xNew) {
       int moved = 0;
       int skipped = 0;
 
@@ -85,7 +91,6 @@ public:
       for(int k = 0; k< N; k += 1) {
         const double oldpos = x[k];
         const double newpos = xNew[k];
-
 
         if (newpos <= 0) {
           cout << "x[" << k << "] = " << x[k] << "\t" << 0 << endl;
@@ -127,39 +132,34 @@ public:
           cout << k << "\t" << timer.getTimeElapsed() << "prodOld = " << prodOld << ", prodNew = " << prodNew << endl ;
         }
       }
-
-      double checksum = 0;
-      for (int i=0; i<N ; i++) {
-        if (i<100 || i> N-100) {
-          cout << "x[" << i << "] = " << x[i] << "\t" << deltaE[i] << endl;
-        }
-        checksum += x[i];
-      }
-
-      cout << "checksum: " << checksum << endl;
-      cout << "skipped k: " << skipped << endl;
-      cout << "moved particles: " << moved << endl;
-      cout << "total time" << timer.getTimeElapsed() << endl;
-
-      delete[] xNew;
     }
 
-    void run_iteration_gpu(OpenClContext& context) {
-      VandermondeDetOpenCl vandermonde_det_opencl(context);
+    void run_iteration_gpu(const double* xNew) {
+      vandermonde_det_opencl->run(x, xNew);
+    }
 
+    void run_iteration(RunMode runMode) {
       Timer timer;
       timer.start();
 
       double* xNew = apply_random_step(N, x);
 
-      std::vector<double> x_vec(x, x  + N);
-      std::vector<double> x_vec_new(xNew, xNew + N);
+      if (runMode == RunMode::GPU) {
+        run_iteration_gpu(xNew);
+      } else {
+        run_iteration_cpu(xNew);
+      }
 
-      vandermonde_det_opencl.run(N, x_vec, x_vec_new);
+      double checksum = 0;
+      for (int i=0; i<N ; i++) {
+        checksum += x[i];
+      }
+
+      cout << "checksum: " << checksum << endl;
+      cout << "total time: " << timer.getTimeElapsed() << endl;
 
       delete[] xNew;
     }
-
 
 };
 
@@ -167,28 +167,29 @@ public:
 int main(int argc, char** argv) {
   const double dx = 0.5;
   const double a = -0.5;
-  bool runOnGpu = true;
+  RunMode runMode = RunMode::CPU;
 
   if(argc > 1){
     try {
-      runOnGpu = std::stoi(argv[1]);
+      if (std::stoi(argv[1]) == 1) {
+        runMode = RunMode::GPU;
+      }
     } catch(const std::invalid_argument& e) {
       std::cerr << "Invalid argument for 'runOnGpu'. Expected 0 or 1. Defaulting to 1.\n";
     }
   }
 
+  constexpr const int N = 1024 * 1024;
+  constexpr const int iterations = 1;
+
   OpenClConfig config;
   config.platform = 0;
   config.deviceId = 0;
 
-  OpenClContext context(config);
+  std::unique_ptr<OpenClContext> context(runMode == RunMode::GPU ? new OpenClContext(config) : nullptr);
 
-  MonteCarlo monteCarlo(42, dx, a);
+  MonteCarlo monteCarlo(N, 42, dx, a, std::move(context));
   for(int iteration = 0; iteration < iterations; iteration += 1) {
-    if (runOnGpu) {
-      monteCarlo.run_iteration_gpu(context);
-    } else {
-      monteCarlo.run_iteration_cpu();
-    }
+    monteCarlo.run_iteration(runMode);
   }
 }

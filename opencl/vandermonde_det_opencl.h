@@ -3,6 +3,7 @@
 #include <random>
 #include <iostream>
 #include <sstream>
+#include <cassert>
 #include "OpenClContext.h"
 #include "large_product.h"
 #include "Timer.h"
@@ -14,15 +15,17 @@ using std::size_t;
 class VandermondeDetOpenCl {
 
 public:
-    VandermondeDetOpenCl(OpenClContext& context): context(context) {
-
+    VandermondeDetOpenCl(std::unique_ptr<OpenClContext> context, int32_t N):
+      isSetup(false),
+      context(std::move(context)),
+      N(N)
+    {
     }
 
-    void run(int32_t N, const std::vector<double>& x, const std::vector<double>& y) {
-      this->N = N;
-      this->blockHCount = (N + BLOCK_H - 1)  / BLOCK_H;
-      this->blockVCount = (N + BLOCK_V - 1) / BLOCK_V;
-      setup();
+    void setup();
+
+    void run(double* x, const double* y) {
+      assert(isSetup);
 
       std::cout << "blockHCount = " << blockHCount << std::endl;
 
@@ -43,7 +46,7 @@ public:
       queue.finish();
       timer.stopAndAddTime();
 
-      print_result(x);
+      fetch_result(x);
     }
 
 private:
@@ -51,7 +54,9 @@ private:
     const int32_t BLOCK_V = 256;
     const int32_t MULS_PER_EXPONENT_EXTRACTION = 16;
 
-    OpenClContext& context;
+    bool isSetup;
+
+    std::unique_ptr<OpenClContext> context;
 
     int32_t N;
     int32_t blockHCount;
@@ -71,9 +76,7 @@ private:
 
     Timer timer;
 
-    void setup();
-
-    void copyInputBuffers(const std::vector<double>& x, const std::vector<double>& y);
+    void copyInputBuffers(const double* x, const double* y);
 
     void benchmark_iteration();
 
@@ -83,7 +86,7 @@ private:
 
     void print_intermediate_result(int32_t i);
 
-    void print_result(const std::vector<double>& xOld);
+    void fetch_result(double* x);
 
 };
 
