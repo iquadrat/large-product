@@ -61,15 +61,14 @@ public:
       return posold - posnew;
     }
 
-    bool decide_metropolis(const int k, const double delta_e, const double newpos, const double deltapos) {
+    bool decide_metropolis(const int k, const double delta_e, const double newpos, const double deltapos, const double r) {
       if (delta_e >= 0) {
         return true;
       } else {
         // Boltzmann weight: exp(delta_e), delta_e is negative if the new position has higher energy
-//        double r = distu(random);
-//        if (r<exp(delta_e)) {
-//          return true;
-//        }
+        if (r<exp(delta_e)) {
+          return true;
+        }
       }
       return false;
     }
@@ -82,7 +81,7 @@ public:
       return xNew;
     }
 
-    void run_iteration_cpu(const double* xNew) {
+    void run_iteration_cpu(const double* xNew, const double* uRandom) {
       int moved = 0;
       int skipped = 0;
 
@@ -113,7 +112,7 @@ public:
         double delta_e = potential_energy_combi(oldpos, newpos) + a * logfactor + logdivision * 2.0; // factor 2 to square the Vandermonde
         assert(!isnan(delta_e));
         deltaE[k] = delta_e;
-        bool should_move_particle = decide_metropolis(k, delta_e, newpos, newpos - oldpos);
+        bool should_move_particle = decide_metropolis(k, delta_e, newpos, newpos - oldpos, uRandom[k]);
 
 //        cout << "oldpos " << oldpos<< "newpos " << newpos <<",divison " << division << ", logdivison " << logdivision << ", logfactor" << logfactor <<endl;
 //        cout << "k: " << k << ", delta_e = " << delta_e << ", move: " << should_move_particle << endl;
@@ -134,8 +133,8 @@ public:
       }
     }
 
-    void run_iteration_gpu(const double* xNew) {
-      vandermonde_det_opencl->run(x, xNew);
+    void run_iteration_gpu(const double* xNew, const double* uRandom) {
+      vandermonde_det_opencl->run(x, xNew, uRandom);
     }
 
     void run_iteration(RunMode runMode) {
@@ -143,11 +142,12 @@ public:
       timer.start();
 
       double* xNew = apply_random_step(N, x);
+      double* uRandom = new_double_array(N);
 
       if (runMode == RunMode::GPU) {
-        run_iteration_gpu(xNew);
+        run_iteration_gpu(xNew, uRandom);
       } else {
-        run_iteration_cpu(xNew);
+        run_iteration_cpu(xNew, uRandom);
       }
 
       double checksum = 0;
@@ -159,6 +159,7 @@ public:
       cout << "total time: " << timer.getTimeElapsed() << endl;
 
       delete[] xNew;
+      delete[] uRandom;
     }
 
 };

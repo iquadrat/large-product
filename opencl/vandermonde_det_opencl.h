@@ -24,7 +24,7 @@ public:
 
     void setup();
 
-    void run(double* x, const double* y) {
+    void run(double* x, const double* y, const double* uRandom) {
       assert(isSetup);
 
       std::cout << "blockHCount = " << blockHCount << std::endl;
@@ -32,7 +32,7 @@ public:
 //      copyInputBuffers(x, y);
 //      benchmark_iteration();
 
-      copyInputBuffers(x, y);
+      copyInputBuffers(x, y, uRandom);
       timer.restart();
 
       for(int32_t b = 0; b < blockVCount + 1; b++) {
@@ -66,6 +66,7 @@ private:
     cl::Buffer bufferY;
     cl::Buffer bufferProdX;
     cl::Buffer bufferProdY;
+    cl::Buffer bufferURandom;
     cl::Buffer bufferDeltaE;
 
     cl::Program program;
@@ -76,7 +77,7 @@ private:
 
     Timer timer;
 
-    void copyInputBuffers(const double* x, const double* y);
+    void copyInputBuffers(const double* x, const double* y, const double* uRandom);
 
     void benchmark_iteration();
 

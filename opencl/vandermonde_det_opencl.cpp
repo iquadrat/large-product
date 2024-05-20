@@ -25,6 +25,7 @@ void VandermondeDetOpenCl::setup() {
   bufferY = context->createBuffer("y", sizeof(double) * blockHCount * BLOCK_H, CL_MEM_READ_ONLY);
   bufferProdX = context->createBuffer("prodX", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
   bufferProdY = context->createBuffer("prodY", sizeof(LargeProduct) * blockHCount * BLOCK_H, CL_MEM_READ_WRITE);
+  bufferURandom = context->createBuffer("uRandom", sizeof(LargeProduct) * blockVCount * BLOCK_V, CL_MEM_READ_WRITE);
   bufferDeltaE = context->createBuffer("deltaE", sizeof(double) * blockVCount * BLOCK_V, CL_MEM_READ_WRITE);
 
   std::vector<std::string> files;
@@ -47,11 +48,12 @@ void VandermondeDetOpenCl::setup() {
   queue = context->createQueue();
 }
 
-void VandermondeDetOpenCl::copyInputBuffers(const double* x, const double* y) {
+void VandermondeDetOpenCl::copyInputBuffers(const double* x, const double* y, const double* uRandom) {
   std::cout << "Copy input buffers to device.." << std::endl;
   std::vector<LargeProduct> prod_init(N, { 1.0, 0 });
   queue.enqueueWriteBuffer(bufferX, true, 0, sizeof(double) * N, x);
   queue.enqueueWriteBuffer(bufferY, true, 0, sizeof(double) * N, y);
+  queue.enqueueWriteBuffer(bufferURandom, true, 0,  sizeof(double) * N, uRandom);
   queue.enqueueWriteBuffer(bufferProdX, true, 0, sizeof(LargeProduct) * N, &prod_init[0]);
   queue.enqueueWriteBuffer(bufferProdY, true, 0, sizeof(LargeProduct) * N, &prod_init[0]);
 }
