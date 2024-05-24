@@ -110,7 +110,7 @@ public:
         const double newpos = xNew[k];
 
         if (newpos <= 0) {
-          cout << "x[" << k << "] = " << x[k] << "\t" << 0 << endl;
+          //cout << "x[" << k << "] = " << x[k] << "\t" << 0 << endl;
           //cout << "k: " << k << ", skipping due to negative newpos" << newpos << endl;
           skipped += 1;
           continue;
@@ -136,12 +136,12 @@ public:
         }
 
         int i=k;
-        cout << "x[" << i << "] = " << x[i] << "\t" << delta_e << endl;
+        //cout << "x[" << i << "] = " << x[i] << "\t" << delta_e << endl;
 //        cout << i << "\t" << prodOld << "\t" << prodNew << endl;
 
 
         if (k % 1024 == 0) {
-          cout << k << "\t" << timer.getTimeElapsed() << "prodOld = " << prodOld << ", prodNew = " << prodNew << endl ;
+          cout << k << "\t" << timer.getTimeElapsed() << ", prodOld = " << prodOld << ", prodNew = " << prodNew << endl ;
         }
       }
     }
@@ -151,7 +151,6 @@ public:
     }
 
     void run_iteration(RunMode runMode) {
-      Timer timer;
       timer.start();
 
       double* xNew = apply_random_step(N, x);

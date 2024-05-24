@@ -1,12 +1,7 @@
 #include "OpenClContext.h"
+
 #include <fstream>
 #include <sstream>
-#include <format>
-//#include "crypto/aes.h"
-//#include "crypto/sha256d.h"
-//#include "boost/endian/conversion.hpp"
-//#include "trace_detect.h"
-//#include "XorString.h"
 #include "HexUtil.h"
 
 using std::string;
