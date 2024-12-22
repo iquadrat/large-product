@@ -8,6 +8,8 @@
 #include "large_product.h"
 #include "Timer.h"
 
+#include <memory>
+
 //#define CHECK_RESULT
 
 using std::size_t;

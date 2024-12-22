@@ -196,10 +196,12 @@ int main(int argc, char** argv) {
   constexpr const int iterations = 4;
 
   OpenClConfig config;
-  config.platform = 0;
+  config.platform = 1;
   config.deviceId = 0;
 
   std::unique_ptr<OpenClContext> context(runMode == RunMode::GPU ? new OpenClContext(config) : nullptr);
+
+  context->createQueue();
 
   MonteCarlo monteCarlo(N, 42, dx, a, std::move(context));
   for(int iteration = 0; iteration < iterations; iteration += 1) {

@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <memory>
 #include "HexUtil.h"
 
 using std::string;

@@ -4,7 +4,7 @@ include(GoogleTest)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_compile_options(-march=native -O2 -g)
+add_compile_options(-march=native -O2 -g -DCL_HPP_TARGET_OPENCL_VERSION=120)
 
 add_executable(main main.cpp OpenClContext.cpp vandermonde_det_opencl.cpp)
 target_link_libraries(main OpenCL)
