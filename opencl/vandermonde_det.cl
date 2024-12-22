@@ -150,16 +150,17 @@ void finish_block_processing(
     __global struct LargeProduct *g_prodX,
     __global struct LargeProduct *g_prodY,
     __global const double *uRandom,
-    __global double* deltaE
+    __global double* deltaE,
+    __local double* x_local,
+    __local int32_t* exponents,
+    __local double* products
 ) {
     const uint32_t lid = get_local_id(0);
 
-    __local double x_local[BLOCK_V];
+
     x_local[lid] = x[v_start + lid];
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    __local int32_t exponents[BLOCK_V / 2];
-    __local double products[BLOCK_V / 2];
 
     for(int v_i = 0; v_i < BLOCK_V; v_i++) {
       int32_t v = v_start + v_i;
@@ -220,11 +221,10 @@ void process_large_product_block_parallel(
         __global const double *y,
         __global struct LargeProduct *g_prodX,
         __global struct LargeProduct *g_prodY,
-        bool skip
+        bool skip,
+        __local double* x_r
 ) {
   const uint32_t lid = get_local_id(0);
-
-  __local double x_r[BLOCK_V];
 
   double prodX = 1.0;
   double prodY = 1.0;
@@ -278,20 +278,26 @@ void prod_diff_realrealvec(
   const uint32_t lid = get_local_id(0);
   const int32_t gid = get_group_id(0) - SPECIAL_GROUPS;
 
+  __local double x_local[BLOCK_V];
+  __local int32_t exponents[BLOCK_V / 2];
+  __local double products[BLOCK_V / 2];
+  __local double x_r[BLOCK_V];
+
   if (gid < 0) {
     const int32_t v_start_skipped = v_start - 2 * BLOCK_V;
     const int32_t v_start_final = v_start - BLOCK_V;
 
     // Process previously skipped block.
     if (v_start_skipped >= 0) {
-      process_large_product_block_parallel(v_start_final, v_start_skipped, 1, x, y, g_prodX, g_prodY, false);
+      process_large_product_block_parallel(v_start_final, v_start_skipped, 1, x, y, g_prodX, g_prodY, false, x_r);
     }
     barrier(CLK_LOCAL_MEM_FENCE);
     barrier(CLK_GLOBAL_MEM_FENCE);
 
     // Process final block.
     if (v_start_final >= 0) {
-      finish_block_processing(v_start_final, x, y, g_prodX, g_prodY, uRandom, deltaE);
+
+      finish_block_processing(v_start_final, x, y, g_prodX, g_prodY, uRandom, deltaE, x_local, exponents, products);
     }
 
     return;
@@ -299,6 +305,6 @@ void prod_diff_realrealvec(
 
   const int32_t h_start = gid * BLOCK_H;
   const int32_t h_blocks = BLOCK_H / BLOCK_V;
-  process_large_product_block_parallel(v_start, h_start, h_blocks, x, y, g_prodX, g_prodY, true);
+  process_large_product_block_parallel(v_start, h_start, h_blocks, x, y, g_prodX, g_prodY, true, x_r);
 
 }
