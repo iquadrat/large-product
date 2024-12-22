@@ -75,6 +75,7 @@ void OpenClContext::init(const OpenClConfig& config) {
 
 	device_ = devices.at(config.deviceId);
 	deviceName = config.deviceName.empty() ? device_.getInfo<CL_DEVICE_NAME>() : config.deviceName;
+  std::cout << "Running on device " << device_.getInfo<CL_DEVICE_NAME>() << std::endl;
 }
 
 bool OpenClContext::debugging() {
